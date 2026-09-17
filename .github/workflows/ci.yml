@@ -1,0 +1,141 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  # Rebuild weekly: the image tracks Debian's tesseract and ocrmypdf, so a
+  # published tag goes stale on security updates even when nothing here moves.
+  schedule:
+    - cron: "0 6 * * 1"
+
+env:
+  IMAGE: ${{ vars.DOCKERHUB_USERNAME || github.repository_owner }}/bandparts
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install
+        run: pip install .
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Command line entry points respond
+        run: |
+          bandparts --help
+          musicxml-check --help
+
+  # The pipeline is mostly external tools, so prove they are wired up
+  # correctly rather than only that the Python imports.
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            ocrmypdf qpdf poppler-utils unpaper \
+            libimage-exiftool-perl libxml2-utils \
+            tesseract-ocr tesseract-ocr-eng
+      - name: Install
+        run: pip install .
+      - name: Split a generated two-voice chart
+        run: |
+          set -euo pipefail
+          # Build a chart the same shape as a real one: a page per voice,
+          # with the instrument named in the header where the tool looks.
+          mkdir -p inbox/test parts
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          pages = []
+          for voice in ("Trombone 1", "Trombone 2"):
+              ps = Path(f"/tmp/{voice}.ps")
+              ps.write_text(
+                  "%!PS\n/Helvetica findfont 24 scalefont setfont\n"
+                  f"72 700 moveto ({voice}) show\n"
+                  "72 660 moveto (Test Chart) show\nshowpage\n"
+              )
+              pdf = ps.with_suffix(".pdf")
+              subprocess.run(["ps2pdf", str(ps), str(pdf)], check=True)
+              pages.append(str(pdf))
+          subprocess.run(["qpdf", "--empty", "--pages", *pages, "--", "inbox/test/Test Chart.pdf"], check=True)
+          PY
+          bandparts inbox parts
+          ls -1 parts/test/
+          test -f "parts/test/Test Chart - Trombone 1.pdf"
+          test -f "parts/test/Test Chart - Trombone 2.pdf"
+          exiftool -s -Title "parts/test/Test Chart - Trombone 1.pdf" | grep -q "Trombone 1"
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [test, pipeline]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # Only pushes from this repository can reach the registry; a pull
+      # request from a fork has no access to the secrets and is built only.
+      - name: Can we publish?
+        id: publish
+        run: |
+          if [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ] && [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "yes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "yes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Log in to Docker Hub
+        if: steps.publish.outputs.yes == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME || github.repository_owner }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ steps.publish.outputs.yes == 'true' }}
+          load: ${{ steps.publish.outputs.yes != 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Description
+        if: steps.publish.outputs.yes == 'true' && github.ref == 'refs/heads/main'
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME || github.repository_owner }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.IMAGE }}
+          short-description: ${{ github.event.repository.description }}

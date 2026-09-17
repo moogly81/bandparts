@@ -13,6 +13,7 @@ dependencies = ["pyyaml"]
 
 [project.scripts]
 bandparts = "bandparts.cli:main"
+musicxml-check = "bandparts.checkcli:main"
 
 [tool.setuptools]
 packages = ["bandparts"]

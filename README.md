@@ -1,5 +1,7 @@
 # bandparts
 
+[![ci](https://github.com/moogly81/bandparts/actions/workflows/ci.yml/badge.svg)](https://github.com/moogly81/bandparts/actions/workflows/ci.yml)
+
 Turns a pile of big-band chart PDFs into one clean, consistently named and
 tagged file per voice.
 
@@ -21,9 +23,41 @@ belong to which instrument, and writes them out as `Title - Voice.pdf`.
 
 ## Install
 
-Either let Nix provide everything, or install the four tools by hand.
+Three ways, in order of least trouble: Docker if you just want to run it, Nix
+if you want a pinned toolchain, or install the tools by hand.
 
-### With Nix (recommended, and fine if you have never used it)
+### With Docker (nothing to install but Docker)
+
+The image carries every tool already, so this works the same on macOS, Linux
+and Windows. Your charts stay on your machine; they are mounted, never copied
+into the image.
+
+```sh
+docker run --rm \
+  -v "$PWD/inbox:/work/inbox:ro" \
+  -v "$PWD/parts:/work/parts" \
+  -v "$PWD/manifests:/work/manifests:ro" \
+  moogly81/bandparts -m manifests/bbcf-2026-2027.yaml
+```
+
+Without a manifest it is shorter:
+
+```sh
+docker run --rm -v "$PWD/inbox:/work/inbox:ro" -v "$PWD/parts:/work/parts" \
+  moogly81/bandparts
+```
+
+The container runs as an ordinary user so the parts it writes belong to you.
+If your host account is not uid 1000, add `--user "$(id -u):$(id -g)"`.
+
+To run the MusicXML checks instead of the splitter, override the entry point:
+
+```sh
+docker run --rm -v "$PWD:/work" --entrypoint musicxml-check \
+  moogly81/bandparts score.mxl
+```
+
+### With Nix (a pinned toolchain, and fine if you have never used it)
 
 Nix is a package manager that builds an isolated toolchain per project, so
 `qpdf`, `ocrmypdf`, `tesseract` and friends are pinned here and never touch the
@@ -145,14 +179,45 @@ filenames need help, and that is what a manifest is for - see
 Every field is optional: an entry may fix the credits only and still let the
 page ranges be found automatically.
 
+## Checking MusicXML
+
+A separate tool for the other direction: if you run a part through optical
+music recognition and your notation editor calls the result "corrupted", this
+says which bars are at fault.
+
+```sh
+bin/musicxml-check "5-10-15 Hours - Trombone 1.mxl"
+```
+
+```
+5-10-15 Hours - Trombone 1.mxl
+  structure: valid
+  durations: 6 measure(s) do not fill the bar
+    part P1 measure 13: 0/8 ticks, empty
+    part P1 measure 35: 26/24 ticks, overfull by 2
+```
+
+Two independent checks, because a file can pass one and fail the other:
+
+- **structure** - the official MusicXML schema, via `xmllint`. Fetched once
+  into `~/.cache/bandparts` and patched so its imports resolve offline.
+- **durations** - every measure's notes must add up to its time signature.
+  This is what editors mean by corrupt, and what the schema cannot see.
+
+It exits non-zero when something is wrong, so it can gate a batch. Reading
+`.mxl` archives and plain `.xml` both work.
+
 ## Layout
 
 ```
 bandparts/      the package: voice detection, PDF tools, tagging, CLI
 bin/bandparts   wrapper so you can run it from anywhere in the repo
+bin/musicxml-check  the MusicXML schema and bar-length checks
 manifests/      per-book overrides
+tests/          unit tests, run with python -m unittest discover -s tests
 inbox/          drop raw charts here        (git-ignored)
 parts/          generated parts land here   (git-ignored)
+Dockerfile      the published image
 flake.nix       pinned toolchain (nix develop)
 .envrc          direnv hook that enters that toolchain automatically
 ```
@@ -166,4 +231,6 @@ git. Only the tooling is versioned.
 - A part whose header never names the instrument cannot be detected.
 - OMR (turning the notes into MusicXML) is out of scope - feed the generated
   parts to [Audiveris](https://github.com/Audiveris/audiveris) and open the
-  result in MuseScore.
+  result in MuseScore. Expect to repair it: on a two-page trombone part it
+  lost every multi-bar rest count and left six unusable bars, which is why
+  `musicxml-check` exists.
