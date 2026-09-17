@@ -15,17 +15,6 @@ updates:
     commit-message:
       prefix: "ci"
 
-  - package-ecosystem: docker
-    directory: "/"
-    schedule:
-      interval: weekly
-      day: monday
-    groups:
-      base-image:
-        patterns: ["*"]
-    commit-message:
-      prefix: "docker"
-
   - package-ecosystem: pip
     directory: "/"
     schedule:

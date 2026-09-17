@@ -101,33 +101,36 @@ brew install qpdf poppler ocrmypdf exiftool
 pip install pyyaml          # only needed for manifests
 ```
 
-## The three paths do not give you the same tools
+## Which tools you end up with
 
-Each path takes the tools from a different place, and those places ship
-different versions. At the time of writing:
+Docker and Nix give you the same ones. The image is built from this
+repository's `flake.nix`, from the same definition as the dev shell, so the
+version of `ocrmypdf` inside the container is the version a contributor tests
+with. There is nothing to keep in step by hand, and no base-image distribution
+with opinions of its own.
 
-| tool | Docker (Debian bookworm) | Nix (nixpkgs-unstable) |
-| --- | --- | --- |
-| ocrmypdf | 14.0.1 | 17.11.0 |
-| tesseract | 5.3.0 | 5.5.3 |
-| qpdf | 11.3.0 | 12.3.2 |
-| poppler | 22.12.0 | 26.06.0 |
-| exiftool | 12.57 | 13.59 |
-
-This is not cosmetic. `ocrmypdf` and `tesseract` decide how well a photocopy
-is read, so the same scan can produce different text, and therefore a
-different voice guess, depending on how you installed. If a chart splits
-correctly for you and not for someone else, compare versions before assuming
-a bug:
+Installing by hand is the exception: Homebrew, apt and the rest ship whatever
+they ship. That matters more than it sounds, because `ocrmypdf` and
+`tesseract` decide how well a photocopy is read - the same scan can produce
+different text, and therefore a different voice guess, on different versions.
+If a chart splits correctly for you and not for someone else, compare versions
+before assuming a bug:
 
 ```sh
 ocrmypdf --version && tesseract --version | head -1
 ```
 
-Debian and nixpkgs package different snapshots of the world, so no version
-number could be pinned to make them agree; only building the image from the
-flake would.
+Worth knowing whichever path you took: **OCR is not reproducible**. The same
+scan, the same tools, run twice, gives slightly different text. Expect small
+differences between runs, and be suspicious only of large ones.
 
-Worth knowing either way: **OCR is not reproducible**. The same scan, the same
-image, run twice, gives slightly different text. Expect small differences
-between runs, and be suspicious only of large ones.
+## Building the image yourself
+
+```sh
+nix build .#dockerImage   # on Linux; produces a script, not a tarball
+./result | docker load
+```
+
+The result streams the image on demand rather than writing a tarball first.
+It is a Linux artefact, so this output does not exist on macOS: build it in a
+CI runner or a Linux VM, or just pull the published one.

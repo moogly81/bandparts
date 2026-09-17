@@ -19,10 +19,10 @@ tool call usually removes the feature.
 ## Never commit music
 
 `data/` holds copyrighted scores: `data/inbox` going in, `data/parts` coming
-out. A single `.gitignore` rule covers the whole tree, and `.dockerignore`
-keeps it out of the image. Both must stay that way, and the rule must stay a
-single one: a rule per folder is easy to get subtly wrong, and the cost is
-publishing someone else's score.
+out. A single `.gitignore` rule covers the whole tree, and the image is built
+by Nix from the flake, which copies only what the flake names. Both must stay
+that way, and the rule must stay a single one: a rule per folder is easy to
+get subtly wrong, and the cost is publishing someone else's score.
 
 - Do not add a chart, part, or excerpt as a test fixture. Tests build their
   own PDFs and MusicXML from scratch; follow that pattern.
