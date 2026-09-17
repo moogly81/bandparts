@@ -3,7 +3,7 @@
 # The work is done by command line tools rather than Python libraries, so the
 # image is mostly those tools. Debian carries all of them, which keeps this
 # far simpler than pinning them by hand.
-FROM python:3.12-slim-bookworm
+FROM python:3.14-slim-bookworm
 
 # ocrmypdf pulls in ghostscript and pngquant; the rest are used directly.
 #   qpdf            split and merge PDF pages
