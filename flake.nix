@@ -22,7 +22,7 @@
 
           runtimeTools = [
             pkgs.qpdf          # page extraction
-            pkgs.poppler_utils # pdfinfo / pdftotext
+            pkgs.poppler-utils # pdfinfo / pdftotext
             pkgs.ocrmypdf      # OCR for scans
             pkgs.exiftool      # document properties
             pkgs.unpaper       # deskew / despeckle, used by --clean
@@ -56,7 +56,7 @@
           makeWrapperArgs = [
             "--prefix PATH : ${pkgs.lib.makeBinPath [
               pkgs.qpdf
-              pkgs.poppler_utils
+              pkgs.poppler-utils
               pkgs.ocrmypdf
               pkgs.exiftool
             ]}"
