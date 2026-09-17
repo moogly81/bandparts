@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 import sys
 import tempfile
 
 from . import manifest as manifests
-from . import pdftools, tagging, voices
+from . import musicxml, omr, pdftools, scoreheader, tagging, voices
 
 
 def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
@@ -24,6 +25,9 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("-r", "--rename", action="append", default=[], metavar="OLD=NEW",
                         help="rename a detected voice, e.g. -r 'Bass Trombone=Trombone 4' (repeatable)")
     parser.add_argument("--clean", action="store_true", help="deskew and despeckle scans before splitting them")
+    parser.add_argument("--musicxml", action="store_true",
+                        help="also run optical music recognition on each part (needs Audiveris; "
+                             "the notes will need repair, see the README)")
     parser.add_argument("-n", "--dry-run", action="store_true", help="report what would be produced, write nothing")
     return parser.parse_args(argv)
 
@@ -64,10 +68,42 @@ def find_charts(inbox: str) -> list[str]:
     return sorted(found)
 
 
+def transcribe(part: str, title: str, voice: str, composer: str, arranger: str) -> str:
+    """Recognise one written part, then correct the header of the result.
+
+    Recognition is best-effort by nature, so a failure here is reported and
+    the run carries on: the PDF part, which is what people actually read
+    from, has already been written.
+    """
+    produced = omr.recognise(part, os.path.dirname(part))
+    header = scoreheader.Header(
+        title=title, part=voice, composer=composer, arranger=arranger
+    )
+    scoreheader.rewrite(produced, header)
+
+    problems = musicxml.check_durations(musicxml.read_score(produced))
+    suffix = f", {len(problems)} bar(s) need repair" if problems else ""
+    return f"{os.path.basename(produced)}{suffix}"
+
+
 def run(options: argparse.Namespace) -> int:
     absent = pdftools.missing_tools()
     if absent:
         sys.exit("missing required tool(s): " + ", ".join(absent))
+
+    if options.musicxml and not options.dry_run:
+        if omr.find_audiveris() is None:
+            sys.exit(
+                "--musicxml needs Audiveris. Install it, or set AUDIVERIS to "
+                "its executable; see the README."
+            )
+        if omr.legacy_tessdata() is None:
+            print(
+                "    ! no legacy tessdata found: recognition will read no "
+                "text, so titles and rehearsal marks will be missing. See the "
+                "README section on optical music recognition.",
+                file=sys.stderr,
+            )
 
     if not os.path.isdir(options.inbox):
         sys.exit(f"no such folder: {options.inbox}/")
@@ -110,6 +146,12 @@ def run(options: argparse.Namespace) -> int:
                     continue
                 pdftools.extract_pages(readable, first, last, destination)
                 pdftools.tag(destination, tagging.fields(title, voice, entry.composer, entry.arranger, collection))
+
+                if options.musicxml:
+                    try:
+                        print(f"        {transcribe(destination, title, voice, entry.composer, entry.arranger)}")
+                    except (omr.RecognitionError, subprocess.TimeoutExpired) as error:
+                        print(f"        ! {error}", file=sys.stderr)
 
     verb = "would write" if options.dry_run else "wrote"
     print(f"\n{len(charts)} chart(s) read, {verb} {written} part(s) in {options.parts}/")

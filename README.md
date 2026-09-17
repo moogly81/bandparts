@@ -230,13 +230,34 @@ done
 export TESSDATA_PREFIX=~/.local/share/tessdata-legacy
 ```
 
-Then run it, and repair the header afterwards:
+Then either let `bandparts` do it for every part it writes:
+
+```sh
+bin/bandparts --musicxml          # off by default; needs Audiveris
+```
+
+Each part gets a `.mxl` beside its PDF, with the header already corrected
+and the number of bars needing repair reported:
+
+```
+    p1-2 -> 5-10-15 Hours - Trombone 1.pdf
+        5-10-15 Hours - Trombone 1.mxl, 7 bar(s) need repair
+```
+
+Recognition failing never stops the run: the PDF is what people read from,
+and it has already been written. The `.omr` file left beside the score is the
+Audiveris project, which you reopen in its editor to correct the recognition.
+
+Or do it by hand, one part at a time:
 
 ```sh
 Audiveris -batch -export -output out/ "parts/Tune - Trombone 1.pdf"
 bin/musicxml-header "out/Tune - Trombone 1.mxl" --from-pdf "parts/Tune - Trombone 1.pdf"
 bin/musicxml-check  "out/Tune - Trombone 1.mxl"
 ```
+
+If Audiveris is not on your `PATH`, point to it: `export AUDIVERIS=...`. On
+macOS that is `/Applications/Audiveris.app/Contents/MacOS/Audiveris`.
 
 `musicxml-header` exists because recognition reads the words correctly but
 guesses their roles from position and size, and on a big-band part it guesses

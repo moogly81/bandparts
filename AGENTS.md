@@ -50,6 +50,7 @@ than reformatting files.
 | `bandparts/tagging.py` | titles and metadata |
 | `bandparts/musicxml.py` | the MusicXML checks, unrelated to the splitter |
 | `bandparts/scoreheader.py` | putting the real title and credits back after recognition |
+| `bandparts/omr.py` | the optional `--musicxml` step, off unless asked for |
 
 ## House style
 
