@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import os
 import re
 
 from . import voices
@@ -42,6 +43,25 @@ def title_from_filename(filename: str) -> str:
     stem = re.sub(r"[\s_]+", " ", stem).strip(" -_")
     stem = re.sub(r"\s+\d+$", "", stem)  # 'My Tune 2' from a duplicated download
     return stem or "Untitled"
+
+
+def collection_from_folder(chart: str, inbox: str) -> str:
+    """The book a chart belongs to, taken from the folder holding it.
+
+    Charts arrive one folder per book, so the folder already carries the
+    answer: 'bbcf-2026-2027/03-bones/tune.pdf' belongs to 'bbcf-2026-2027'.
+    Sub-folders are sections within a book, not books, so only the first
+    component counts. A chart sitting directly in the inbox takes the name of
+    the inbox itself, which is what makes 'bandparts ~/charts/bbcf-2026-2027'
+    do the obvious thing.
+
+    The name is used verbatim. Guessing that 'bbcf' wants to be 'BBCF' would
+    be wrong as often as right; a manifest sets the pretty form explicitly.
+    """
+    book = os.path.dirname(chart).split(os.sep)[0]
+    if not book:
+        book = os.path.basename(os.path.abspath(inbox))
+    return book
 
 
 def credit(composer: str, arranger: str) -> str:

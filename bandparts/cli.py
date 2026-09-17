@@ -22,7 +22,6 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("parts", nargs="?", default="data/parts",
                         help="folder to write the split parts to (default: data/parts)")
     parser.add_argument("-m", "--manifest", help="YAML overrides for titles, credits and page ranges")
-    parser.add_argument("-c", "--collection", default="", help="tag every part with a collection, e.g. 'BBCF 2026-2027'")
     parser.add_argument("-l", "--languages", default="", help="tesseract languages used when a scan needs OCR (default eng+spa+fra)")
     parser.add_argument("-r", "--rename", action="append", default=[], metavar="OLD=NEW",
                         help="rename a detected voice, e.g. -r 'Bass Trombone=Trombone 4' (repeatable)")
@@ -117,7 +116,6 @@ def run(options: argparse.Namespace) -> int:
     overrides, defaults = manifests.load(options.manifest)
 
     # command line flags win over the book-wide settings of the manifest
-    collection = options.collection or defaults.collection
     languages = options.languages or defaults.languages or "eng+spa+fra"
     clean = options.clean or defaults.clean
     renames = {**defaults.rename, **dict(pair.split("=", 1) for pair in options.rename)}
@@ -130,6 +128,8 @@ def run(options: argparse.Namespace) -> int:
             source = os.path.join(options.inbox, chart)
             entry = overrides.get(os.path.basename(chart), manifests.Entry())
             title = entry.title or tagging.title_from_filename(chart)
+            # a manifest names the book properly; otherwise the folder does
+            collection = defaults.collection or tagging.collection_from_folder(chart, options.inbox)
 
             destination_folder = os.path.join(options.parts, os.path.dirname(chart))
             os.makedirs(destination_folder, exist_ok=True)

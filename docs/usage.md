@@ -9,10 +9,26 @@ bin/bandparts --dry-run
 
 # a full run with credits, a house naming rule and cleaned-up scans
 bin/bandparts \
-    --collection "BBCF 2026-2027" \
     --manifest manifests/bbcf-2026-2027.yaml \
     --rename "Bass Trombone=Trombone 4" \
     --clean
+```
+
+The book each part belongs to is not an option: it comes from the folder the
+chart sits in. `data/inbox/bbcf-2026-2027/03-bones/tune.pdf` is tagged
+`bbcf-2026-2027`, sub-folders counting as sections of that book rather than
+books of their own. Point the tool straight at a book and the same holds:
+
+```sh
+bin/bandparts ~/Dropbox/bbcf-2026-2027 ~/Dropbox/parts   # tagged bbcf-2026-2027
+```
+
+The folder name is used as it is written. If you want `BBCF 2026-2027` on the
+tablet rather than `bbcf-2026-2027`, say so once in the manifest and it wins:
+
+```yaml
+_defaults:
+  collection: BBCF 2026-2027
 ```
 
 Both folders are positional, so nothing has to live in the checkout:
@@ -24,7 +40,6 @@ bin/bandparts ~/Dropbox/bbcf/charts ~/Dropbox/bbcf/parts
 | Option | Purpose |
 | --- | --- |
 | `-m, --manifest` | YAML overrides for titles, credits and page ranges |
-| `-c, --collection` | value written to the Creator tag and keywords |
 | `-r, --rename` | rewrite a voice name, repeatable (`'Bass Trombone=Trombone 4'`) |
 | `-l, --languages` | tesseract languages for OCR (default `eng+spa+fra`) |
 | `--clean` | deskew and despeckle scans before splitting |

@@ -19,8 +19,9 @@ belong to which instrument, and writes them out as `Title - Voice.pdf`.
    Spanish, French or Italian (`Trombón Bajo`, `2nd Trumpet`, `Sax Alto`...).
 3. **Split on voice changes** with `qpdf`, keeping continuation pages attached
    to the part they belong to.
-4. **Tag the result** with `exiftool`: title, composer, arranger, part and
-   collection, so the files sort and search properly on a tablet.
+4. **Tag the result** with `exiftool`: title, composer, arranger, part, and
+   the book it came from - taken from the folder, not typed in - so the files
+   sort and search properly on a tablet.
 
 ## Quick start
 
