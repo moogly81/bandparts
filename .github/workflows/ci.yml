@@ -157,6 +157,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p smoke/in/testbook smoke/out
+          # The image runs as uid 1000 and this runner is 1001, so the mount
+          # has to be writable by both. Docker Desktop hides this by
+          # remapping ownership; Linux does not.
+          chmod -R a+rwX smoke
 
           # A page per voice, named where the tool looks, then flattened to
           # pixels so that the text can only be recovered by OCR.
