@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Run the MusicXML checks from anywhere inside the repo without installing.
+# Run without installing, from wherever you happen to be.
 set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$repo"
-exec python3 -m bandparts.checkcli "$@"
+PYTHONPATH="$repo${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m bandparts.checkcli "$@"

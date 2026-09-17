@@ -17,8 +17,10 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         prog="bandparts",
         description="Split big-band chart PDFs into one tagged file per voice.",
     )
-    parser.add_argument("inbox", nargs="?", default="inbox", help="folder holding the raw charts (default: inbox)")
-    parser.add_argument("parts", nargs="?", default="parts", help="folder to write the split parts to (default: parts)")
+    parser.add_argument("inbox", nargs="?", default="data/inbox",
+                        help="folder holding the raw charts (default: data/inbox)")
+    parser.add_argument("parts", nargs="?", default="data/parts",
+                        help="folder to write the split parts to (default: data/parts)")
     parser.add_argument("-m", "--manifest", help="YAML overrides for titles, credits and page ranges")
     parser.add_argument("-c", "--collection", default="", help="tag every part with a collection, e.g. 'BBCF 2026-2027'")
     parser.add_argument("-l", "--languages", default="", help="tesseract languages used when a scan needs OCR (default eng+spa+fra)")

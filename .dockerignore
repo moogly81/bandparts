@@ -1,9 +1,6 @@
 # Charts and generated parts are copyrighted material; keep them out of the
 # build context so they can never reach a published image.
-inbox/*
-parts/*
-!inbox/.gitkeep
-!parts/.gitkeep
+data/
 
 .git
 .github

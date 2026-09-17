@@ -1,6 +1,7 @@
 # bandparts
 
 [![ci](https://github.com/moogly81/bandparts/actions/workflows/ci.yml/badge.svg)](https://github.com/moogly81/bandparts/actions/workflows/ci.yml)
+[![docker](https://img.shields.io/docker/v/moogly81/bandparts?label=docker&sort=semver)](https://hub.docker.com/r/moogly81/bandparts)
 
 Turns a pile of big-band chart PDFs into one clean, consistently named and
 tagged file per voice.
@@ -21,320 +22,70 @@ belong to which instrument, and writes them out as `Title - Voice.pdf`.
 4. **Tag the result** with `exiftool`: title, composer, arranger, part and
    collection, so the files sort and search properly on a tablet.
 
-## Install
+## Quick start
 
-Three ways, in order of least trouble: Docker if you just want to run it, Nix
-if you want a pinned toolchain, or install the tools by hand.
-
-### With Docker (nothing to install but Docker)
-
-The image carries every tool already, so this works the same on macOS, Linux
-and Windows. Your charts stay on your machine; they are mounted, never copied
-into the image.
+Nothing to install but Docker. Put your charts in `data/inbox/`, then:
 
 ```sh
-docker run --rm \
-  -v "$PWD/inbox:/work/inbox:ro" \
-  -v "$PWD/parts:/work/parts" \
-  -v "$PWD/manifests:/work/manifests:ro" \
-  moogly81/bandparts -m manifests/bbcf-2026-2027.yaml
+docker run --rm -v "$PWD/data:/work/data" moogly81/bandparts
 ```
 
-Without a manifest it is shorter:
+```
+bbcf-2026-2027/03-bones/In-The-Mood (arrastrado).pdf
+    scan detected, running OCR (eng+spa+fra)
+    p1-2 -> In The Mood - Trombone 1.pdf
+    p3-4 -> In The Mood - Trombone 2.pdf
 
-```sh
-docker run --rm -v "$PWD/inbox:/work/inbox:ro" -v "$PWD/parts:/work/parts" \
-  moogly81/bandparts
+1 chart(s) read, wrote 2 part(s) in data/parts/
 ```
 
-The container runs as an ordinary user so the parts it writes belong to you.
-If your host account is not uid 1000, add `--user "$(id -u):$(id -g)"`.
+Your charts are mounted, never copied into the image, and the files written
+belong to you rather than to root.
 
-To run the MusicXML checks instead of the splitter, override the entry point:
+Prefer to run it directly? `nix develop` gives you the whole toolchain, or
+install `qpdf`, `poppler`, `ocrmypdf` and `exiftool` yourself. See
+**[docs/install.md](docs/install.md)**.
 
-```sh
-docker run --rm -v "$PWD:/work" --entrypoint musicxml-check \
-  moogly81/bandparts score.mxl
-```
+## Documentation
 
-### With Nix (a pinned toolchain, and fine if you have never used it)
-
-Nix is a package manager that builds an isolated toolchain per project, so
-`qpdf`, `ocrmypdf`, `tesseract` and friends are pinned here and never touch the
-rest of your machine.
-
-```sh
-# 1. install Nix (multi-user, macOS or Linux) - once per machine
-sh <(curl -L https://nixos.org/nix/install) --daemon
-
-# 2. enable flakes, the format this repo uses - once per machine
-mkdir -p ~/.config/nix
-echo 'experimental-features = nix-command flakes' >> ~/.config/nix/nix.conf
-
-# 3. enter the project shell (first run downloads the tools, a few minutes)
-cd bandparts
-nix develop
-```
-
-Inside that shell every dependency is on `PATH`. Type `exit` to leave it and
-your machine is exactly as before - nothing was installed globally.
-
-To get the shell **automatically** whenever you `cd` into the repo, use
-[direnv](https://direnv.net) with the `.envrc` already in this repo:
-
-```sh
-brew install direnv                                    # or: nix profile install nixpkgs#direnv
-echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc && exec zsh
-direnv allow                                           # once, in the repo
-```
-
-`.envrc` falls back to the tools already on your `PATH` if Nix is absent, so it
-is safe either way.
-
-### Without Nix
-
-```sh
-brew install qpdf poppler ocrmypdf exiftool
-pip install pyyaml          # only needed for manifests
-```
-
-### The three paths do not give you the same tools
-
-Each install path takes the tools from a different place, and those places
-ship different versions. At the time of writing:
-
-| tool | Docker (Debian bookworm) | Nix (nixpkgs-unstable) |
-| --- | --- | --- |
-| ocrmypdf | 14.0.1 | 17.11.0 |
-| tesseract | 5.3.0 | 5.5.3 |
-| qpdf | 11.3.0 | 12.3.2 |
-| poppler | 22.12.0 | 26.06.0 |
-| exiftool | 12.57 | 13.59 |
-
-This is not cosmetic. `ocrmypdf` and `tesseract` decide how well a photocopy
-is read, so the same scan can produce different text, and therefore a
-different voice guess, depending on how you installed. If a chart splits
-correctly for you and not for someone else, compare versions before assuming
-a bug:
-
-```sh
-ocrmypdf --version && tesseract --version | head -1
-```
-
-Debian and nixpkgs package different snapshots of the world, so there is no
-version number that could be pinned to make them agree. Making them identical
-would mean building the image from the flake, which is a bigger change than
-this project currently needs.
-
-Worth knowing either way: OCR is not reproducible. The same scan, the same
-image, run twice, gives slightly different text. Expect small differences
-between runs; be suspicious only of large ones.
-
-## Use
-
-```sh
-# drop the raw charts in inbox/, then
-bin/bandparts
-
-# see the plan without writing anything
-bin/bandparts --dry-run
-
-# a full run with credits, a house naming rule and cleaned-up scans
-bin/bandparts \
-    --collection "BBCF 2026-2027" \
-    --manifest manifests/bbcf-2026-2027.yaml \
-    --rename "Bass Trombone=Trombone 4" \
-    --clean
-```
-
-| Option | Purpose |
+| | |
 | --- | --- |
-| `-m, --manifest` | YAML overrides for titles, credits and page ranges |
-| `-c, --collection` | value written to the Creator tag and keywords |
-| `-r, --rename` | rewrite a voice name, repeatable (`'Bass Trombone=Trombone 4'`) |
-| `-l, --languages` | tesseract languages for OCR (default `eng+spa+fra`) |
-| `--clean` | deskew and despeckle scans before splitting |
-| `-n, --dry-run` | report only; scans are not OCR'd, so they report no parts |
-
-## Adding a new book
-
-The repo is meant to accumulate books over the years, one folder per batch.
-`inbox/` is walked recursively and the structure is mirrored into `parts/`:
-
-```
-inbox/bbcf-2026-2027/03-bones/*.pdf   ->   parts/bbcf-2026-2027/03-bones/*.pdf
-inbox/quintet-2027/*.pdf              ->   parts/quintet-2027/*.pdf
-```
-
-So, for a new pile of charts:
-
-1. `mkdir inbox/<band>-<season>` and drop the PDFs in it.
-2. `bin/bandparts --dry-run` and read the plan. Most engraved charts need
-   nothing else.
-3. For whatever came out wrong, copy `manifests/bbcf-2026-2027.yaml` to
-   `manifests/<band>-<season>.yaml` and fix those charts there. The
-   `_defaults` block at the top carries the settings of the whole book:
-
-   ```yaml
-   _defaults:
-     collection: BBCF 2026-2027
-     languages: eng+spa+fra
-     rename:
-       Bass Trombone: Trombone 4
-   ```
-
-4. `bin/bandparts -m manifests/<band>-<season>.yaml` - and that one command
-   reproduces the book from scratch any time, which is the point of keeping
-   the manifest in git.
-
-Instruments already recognised: trombone (incl. bass), trumpet, alto/tenor/
-baritone sax, clarinet, flute, guitar, piano, bass, drums, vocal - in English,
-Spanish, French and Italian. Add to `FAMILIES` in `bandparts/voices.py` for
-anything else.
-
-## Manifests
-
-Detection covers most engraved charts. Hand-written headers and creative
-filenames need help, and that is what a manifest is for - see
-[`manifests/bbcf-2026-2027.yaml`](manifests/bbcf-2026-2027.yaml):
-
-```yaml
-"Quizas Quizas Quizas-78 pgs-1 (arrastrado).pdf":
-  title: Quizas Quizas Quizas
-  composer: Osvaldo Farres
-  arranger: Joe d'Etienne
-  parts:                      # explicit ranges win over detection
-    Trombone 1: 1-4
-    Trombone 2: 5-8
-```
-
-Every field is optional: an entry may fix the credits only and still let the
-page ranges be found automatically.
-
-## Optical music recognition
-
-Out of scope for the splitter, but if you do run parts through
-[Audiveris](https://github.com/Audiveris/audiveris), two things make the
-result far better, and both are easy to miss.
-
-**Give Audiveris legacy OCR data.** The macOS build ships none, so it reads
-no text at all: no title, no part name, no rehearsal marks. Pointing it at
-Homebrew's tesseract is not enough either, because Audiveris uses the legacy
-engine and Homebrew ships LSTM-only models. Fetch the full ones:
-
-```sh
-mkdir -p ~/.local/share/tessdata-legacy && cd ~/.local/share/tessdata-legacy
-for l in eng fra spa ita; do
-  curl -sSLO "https://github.com/tesseract-ocr/tessdata/raw/main/$l.traineddata"
-done
-export TESSDATA_PREFIX=~/.local/share/tessdata-legacy
-```
-
-Then either let `bandparts` do it for every part it writes:
-
-```sh
-bin/bandparts --musicxml          # off by default; needs Audiveris
-```
-
-Each part gets a `.mxl` beside its PDF, with the header already corrected
-and the number of bars needing repair reported:
-
-```
-    p1-2 -> 5-10-15 Hours - Trombone 1.pdf
-        5-10-15 Hours - Trombone 1.mxl, 7 bar(s) need repair
-```
-
-Recognition failing never stops the run: the PDF is what people read from,
-and it has already been written. The `.omr` file left beside the score is the
-Audiveris project, which you reopen in its editor to correct the recognition.
-
-Or do it by hand, one part at a time:
-
-```sh
-Audiveris -batch -export -output out/ "parts/Tune - Trombone 1.pdf"
-bin/musicxml-header "out/Tune - Trombone 1.mxl" --from-pdf "parts/Tune - Trombone 1.pdf"
-bin/musicxml-check  "out/Tune - Trombone 1.mxl"
-```
-
-If Audiveris is not on your `PATH`, point to it: `export AUDIVERIS=...`. On
-macOS that is `/Applications/Audiveris.app/Contents/MacOS/Audiveris`.
-
-`musicxml-header` exists because recognition reads the words correctly but
-guesses their roles from position and size, and on a big-band part it guesses
-wrong: the part name becomes the title, the tune name becomes a composer, the
-key note becomes the movement. Since the PDF was already tagged, the true
-answers are known. The fix labels the text that is already on the page and
-never moves it, because those positions came from the scan and are what make
-the result resemble the original.
-
-What this does **not** fix is the notes. On a two-page trombone part,
-recognition lost every multi-bar rest count and left six bars that do not add
-up. Text quality and note quality are separate problems, and only the first
-has an easy answer.
-
-## Checking MusicXML
-
-A separate tool for the other direction: if you run a part through optical
-music recognition and your notation editor calls the result "corrupted", this
-says which bars are at fault.
-
-```sh
-bin/musicxml-check "5-10-15 Hours - Trombone 1.mxl"
-```
-
-```
-5-10-15 Hours - Trombone 1.mxl
-  structure: valid
-  durations: 6 measure(s) do not fill the bar
-    part P1 measure 13: 0/8 ticks, empty
-    part P1 measure 35: 26/24 ticks, overfull by 2
-```
-
-Two independent checks, because a file can pass one and fail the other:
-
-- **structure** - the official MusicXML schema, via `xmllint`. Fetched once
-  into `~/.cache/bandparts` and patched so its imports resolve offline.
-- **durations** - every measure's notes must add up to its time signature.
-  This is what editors mean by corrupt, and what the schema cannot see.
-
-It exits non-zero when something is wrong, so it can gate a batch. Reading
-`.mxl` archives and plain `.xml` both work.
+| **[Install](docs/install.md)** | Docker, Nix or by hand, alternatives to Docker Desktop, and why the three paths do not give identical tools |
+| **[Usage](docs/usage.md)** | every option, adding a new book, and manifests for the charts that need help |
+| **[MusicXML](docs/musicxml.md)** | optional optical music recognition, repairing the header it produces, and checking a score an editor calls corrupt |
+| **[Contributing](CONTRIBUTING.md)** | how to report a chart that is not recognised, and what makes a good patch |
+| **[AGENTS.md](AGENTS.md)** | the brief to hand an AI assistant working on this repo |
 
 ## Layout
 
 ```
-bandparts/      the package: voice detection, PDF tools, tagging, CLI
-bin/bandparts   wrapper so you can run it from anywhere in the repo
-bin/musicxml-check  the MusicXML schema and bar-length checks
-bin/musicxml-header put the real title and credits back after recognition
-AGENTS.md       the brief for AI assistants, symlinked per tool
-manifests/      per-book overrides
-tests/          unit tests, run with python -m unittest discover -s tests
-inbox/          drop raw charts here        (git-ignored)
-parts/          generated parts land here   (git-ignored)
-Dockerfile      the published image
-flake.nix       pinned toolchain (nix develop)
-.envrc          direnv hook that enters that toolchain automatically
+bandparts/          the package: voice detection, PDF tools, tagging, CLI
+bin/                run the tools without installing them
+manifests/          per-book overrides, kept in git
+tests/              python -m unittest discover -s tests
+docs/               the pages listed above
+data/inbox/         drop raw charts here        (git-ignored)
+data/parts/         generated parts land here   (git-ignored)
+Dockerfile          the published image
+flake.nix, .envrc   pinned toolchain, entered automatically by direnv
 ```
 
-Scores are copyrighted, so `inbox/` and `parts/` keep their contents out of
-git. Only the tooling is versioned.
+Scores are copyrighted, so the whole of `data/` is kept out of git by a single
+rule, and out of the Docker build context. Only the tooling is versioned.
 
-## Contributing
-
-Patches are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). If you work with
-an AI assistant, [AGENTS.md](AGENTS.md) is the brief to point it at
-(`CLAUDE.md`, `GEMINI.md` and `.github/copilot-instructions.md` are symlinks
-to the same file, so every tool finds it).
-
-One rule above all others: never commit sheet music.
+Those folders are defaults, not requirements: paths resolve against your
+current directory, so `bandparts ~/Dropbox/charts ~/Dropbox/parts` works from
+anywhere and nothing needs to live in the checkout.
 
 ## Known limits
 
 - Scans of hand-written headers are recognised poorly; use a manifest.
 - A part whose header never names the instrument cannot be detected.
-- OMR (turning the notes into MusicXML) is out of scope - feed the generated
-  parts to [Audiveris](https://github.com/Audiveris/audiveris) and open the
-  result in MuseScore. Expect to repair it: on a two-page trombone part it
-  lost every multi-bar rest count and left six unusable bars, which is why
-  `musicxml-check` exists.
+- Turning the notes back into notation is only as good as Audiveris, which is
+  to say: expect to repair the result. On a two-page trombone part it lost
+  every multi-bar rest count and left six unusable bars. See
+  [docs/musicxml.md](docs/musicxml.md).
+
+## Licence
+
+MIT - see [LICENSE](LICENSE).

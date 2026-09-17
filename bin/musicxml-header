@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Repair a recognised score's header without installing the package.
+# Run without installing, from wherever you happen to be.
 set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$repo"
-exec python3 -m bandparts.headercli "$@"
+PYTHONPATH="$repo${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m bandparts.headercli "$@"

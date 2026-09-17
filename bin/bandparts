@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Run the CLI from anywhere inside the repo without installing it.
+# Run the CLI without installing it, from wherever you happen to be.
+#
+# Deliberately does not change directory: relative paths must mean what they
+# mean in your shell, not in the checkout, or `bandparts charts out` quietly
+# writes into the repository.
 set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$repo"
-exec python3 -m bandparts.cli "$@"
+PYTHONPATH="$repo${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m bandparts.cli "$@"

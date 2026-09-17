@@ -2,7 +2,8 @@
 
 This file is the shared brief for coding agents (Claude Code, Copilot,
 Cursor, Aider, opencode). Humans should read [CONTRIBUTING.md](CONTRIBUTING.md)
-first; everything here applies to both.
+first; everything here applies to both. Reference documentation lives in
+`docs/`: install, usage, musicxml.
 
 ## What this project is
 
@@ -17,8 +18,11 @@ tool call usually removes the feature.
 
 ## Never commit music
 
-`inbox/` and `parts/` hold copyrighted scores. They are git-ignored and
-excluded from the Docker build context, and it must stay that way.
+`data/` holds copyrighted scores: `data/inbox` going in, `data/parts` coming
+out. A single `.gitignore` rule covers the whole tree, and `.dockerignore`
+keeps it out of the image. Both must stay that way, and the rule must stay a
+single one: a rule per folder is easy to get subtly wrong, and the cost is
+publishing someone else's score.
 
 - Do not add a chart, part, or excerpt as a test fixture. Tests build their
   own PDFs and MusicXML from scratch; follow that pattern.
@@ -84,8 +88,11 @@ with a scanner streak through it.
 - A multi-measure rest is allowed to "not fill" its bar in `musicxml.py`;
   one written rest stands for many bars.
 - Chord notes and grace notes do not advance the cursor when measuring a bar.
-- `bandparts` walks `inbox/` recursively and mirrors the folder structure
-  into `parts/`. A flat run is a special case of that, not the normal one.
+- `bandparts` walks `data/inbox` recursively and mirrors the folder structure
+  into `data/parts`. A flat run is a special case of that, not the normal one.
+- `bin/*` deliberately does not `cd` into the repository. Paths must mean
+  what they mean in the user's shell; the data folders are a convenience for
+  working in the checkout, not where charts are required to live.
 - The image builds one architecture when it is not being published, because
   a manifest list cannot be loaded into a local daemon.
 - Docker and Nix deliberately carry different tool versions (Debian's

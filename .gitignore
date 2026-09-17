@@ -1,8 +1,7 @@
-# charts and generated parts stay out of git - they are copyrighted material
-inbox/*
-parts/*
-!inbox/.gitkeep
-!parts/.gitkeep
+# Charts and generated parts stay out of git: they are copyrighted material.
+# One rule over the whole tree rather than a rule per folder, because the
+# cost of getting this wrong is publishing someone else's score.
+data/
 
 __pycache__/
 *.py[cod]

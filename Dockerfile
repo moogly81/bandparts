@@ -45,4 +45,6 @@ LABEL org.opencontainers.image.title="bandparts" \
       org.opencontainers.image.licenses="MIT"
 
 ENTRYPOINT ["bandparts"]
-CMD ["--help"]
+# No arguments: the defaults read /work/data/inbox and write /work/data/parts,
+# so a single mount and no flags is a complete run.
+CMD []

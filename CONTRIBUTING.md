@@ -12,7 +12,7 @@ python -m unittest discover -s tests -v
 ```
 
 If you would rather not install anything, the Docker image carries the full
-toolchain; see the README.
+toolchain; see [docs/install.md](docs/install.md).
 
 ## The one hard rule
 
