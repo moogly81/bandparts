@@ -86,6 +86,16 @@ with a scanner streak through it.
   into `parts/`. A flat run is a special case of that, not the normal one.
 - The image builds one architecture when it is not being published, because
   a manifest list cannot be loaded into a local daemon.
+- Docker and Nix deliberately carry different tool versions (Debian's
+  ocrmypdf 14 against nixpkgs' 17, and so on). This is documented in the
+  README, not an oversight to tidy up. Do not "fix" it by pinning one side
+  to the other: apt and nixpkgs package different snapshots, so only
+  building the image from the flake would actually make them agree, and that
+  trade was considered and declined.
+- OCR output is not reproducible. Two runs of the same image on the same
+  scan differ by a handful of words. Before blaming a change for a
+  difference in OCR text, run the unchanged version twice and compare that
+  first; the noise floor is real and easy to mistake for a regression.
 
 ## What not to do unasked
 

@@ -98,6 +98,38 @@ brew install qpdf poppler ocrmypdf exiftool
 pip install pyyaml          # only needed for manifests
 ```
 
+### The three paths do not give you the same tools
+
+Each install path takes the tools from a different place, and those places
+ship different versions. At the time of writing:
+
+| tool | Docker (Debian bookworm) | Nix (nixpkgs-unstable) |
+| --- | --- | --- |
+| ocrmypdf | 14.0.1 | 17.11.0 |
+| tesseract | 5.3.0 | 5.5.3 |
+| qpdf | 11.3.0 | 12.3.2 |
+| poppler | 22.12.0 | 26.06.0 |
+| exiftool | 12.57 | 13.59 |
+
+This is not cosmetic. `ocrmypdf` and `tesseract` decide how well a photocopy
+is read, so the same scan can produce different text, and therefore a
+different voice guess, depending on how you installed. If a chart splits
+correctly for you and not for someone else, compare versions before assuming
+a bug:
+
+```sh
+ocrmypdf --version && tesseract --version | head -1
+```
+
+Debian and nixpkgs package different snapshots of the world, so there is no
+version number that could be pinned to make them agree. Making them identical
+would mean building the image from the flake, which is a bigger change than
+this project currently needs.
+
+Worth knowing either way: OCR is not reproducible. The same scan, the same
+image, run twice, gives slightly different text. Expect small differences
+between runs; be suspicious only of large ones.
+
 ## Use
 
 ```sh
