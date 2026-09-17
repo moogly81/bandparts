@@ -12,6 +12,17 @@ and Windows. Charts are mounted at run time, never copied into the image.
 docker run --rm -v "$PWD/data:/work/data" moogly81/bandparts
 ```
 
+The same image is published to GitHub's registry, if you prefer it or are
+rate-limited by Docker Hub:
+
+```sh
+docker run --rm -v "$PWD/data:/work/data" ghcr.io/moogly81/bandparts
+```
+
+Tags are releases: `latest` follows the newest `v*` tag rather than every
+commit to main, so pulling twice in a week gets you the same image unless
+something was actually released.
+
 Manifests are found under `manifests/`, so mount that too and they are picked
 up by name, with nothing to pass:
 
@@ -127,11 +138,22 @@ differences between runs, and be suspicious only of large ones.
 
 ## Building the image yourself
 
+On Linux:
+
 ```sh
-nix build .#dockerImage   # on Linux; produces a script, not a tarball
+nix build .#dockerImage   # produces a script that streams the image
 ./result | docker load
 ```
 
-The result streams the image on demand rather than writing a tarball first.
-It is a Linux artefact, so this output does not exist on macOS: build it in a
-CI runner or a Linux VM, or just pull the published one.
+On macOS that output does not exist, because the image is a Linux artefact.
+Rather than pushing to CI to find out whether a change works, build it in a
+container:
+
+```sh
+scripts/build-image          # ~30 seconds once warm
+scripts/build-image --run    # ... and then split whatever is in data/in
+```
+
+The script hands Nix only the files git tracks, so your charts are never
+copied into the build, and keeps its Nix store in a named volume so repeat
+builds are quick.

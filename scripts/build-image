@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Build the container image on a machine that cannot build it natively.
+#
+# The image is a Linux artefact, so `nix build .#dockerImage` does not work on
+# macOS. This runs that same command inside a Linux container and loads the
+# result into your local Docker, which turns a four-minute round trip through
+# CI into something you can iterate on.
+#
+#     scripts/build-image            # build and load bandparts:latest
+#     scripts/build-image --run      # ... then split whatever is in data/in
+#
+# The Nix store lives in a named volume, so the first run downloads a few
+# hundred megabytes and later runs take seconds.
+set -euo pipefail
+
+repository=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+volume=bandparts-nix
+system=$(uname -m)
+case "$system" in
+    arm64 | aarch64) platform=linux/arm64 ;;
+    *) platform=linux/amd64 ;;
+esac
+
+command -v docker > /dev/null || {
+    echo "scripts/build-image needs docker (or a drop-in such as colima or podman)" >&2
+    exit 1
+}
+
+# Only the tracked files are handed to the build. data/ holds gigabytes of
+# copyrighted charts: copying it into a build context would be slow, and
+# putting it anywhere near an image would be worse.
+#
+# The context lives inside the repository rather than in $TMPDIR because
+# Docker Desktop on macOS shares $HOME but not /var/folders, and a bind mount
+# of an unshared path silently gives you an empty directory in the VM.
+context="$repository/.image-build"
+trap 'rm -rf "$context"' EXIT
+rm -rf "$context"
+mkdir -p "$context/out"
+git -C "$repository" ls-files -z | tar -C "$repository" --null -T - -cf - | tar -C "$context" -xf -
+
+echo "building $platform image from $(git -C "$repository" describe --always --dirty)"
+
+docker run --rm \
+    --platform "$platform" \
+    -v "$volume:/nix" \
+    -v "$context:/src:ro" \
+    -v "$context/out:/out" \
+    nixos/nix \
+    sh -eu -c '
+        nix --extra-experimental-features "nix-command flakes" \
+            build "path:/src#dockerImage" --out-link /tmp/image --print-build-logs
+        # streamLayeredImage produces a script; run it to get the tarball
+        /tmp/image > /out/image.tar
+    '
+
+docker load -i "$context/out/image.tar"
+echo
+docker image ls bandparts:latest --format 'built {{.Repository}}:{{.Tag}}  {{.Size}}'
+
+if [ "${1:-}" = "--run" ]; then
+    echo
+    docker run --rm -v "$repository/data:/work/data" bandparts:latest
+fi

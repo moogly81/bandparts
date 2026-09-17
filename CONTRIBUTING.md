@@ -14,6 +14,11 @@ python -m unittest discover -s tests -v
 If you would rather not install anything, the Docker image carries the full
 toolchain; see [docs/install.md](docs/install.md).
 
+If you change `flake.nix` or anything the image contains, build it before
+pushing: `scripts/build-image` does that on macOS too, in about half a minute,
+where `nix build .#dockerImage` cannot. CI builds it as well, but waiting four
+minutes for an answer you can have in thirty seconds is a poor trade.
+
 ## The one hard rule
 
 Never commit sheet music. `inbox/` and `parts/` are git-ignored because they

@@ -36,6 +36,7 @@ get subtly wrong, and the cost is publishing someone else's score.
 nix develop                  # toolchain, if you have Nix
 python -m unittest discover -s tests -v
 bin/bandparts --dry-run      # plan a run without writing anything
+scripts/build-image         # build the container image, works on macOS too
 bin/musicxml-check FILE      # schema and bar-length checks
 docker build -t bandparts:dev .
 ```

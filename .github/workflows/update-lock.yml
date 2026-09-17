@@ -1,0 +1,38 @@
+# The image is built from a pinned flake.lock, so rebuilding it on a schedule
+# would republish identical bytes. What does go stale is the lock itself:
+# ghostscript, python and tesseract get security fixes upstream that nothing
+# here would otherwise pick up. So the weekly job updates the lock and opens a
+# pull request, which ci then builds and tests like any other change.
+#
+# Dependabot cannot do this: it has no Nix ecosystem.
+name: update-lock
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - uses: DeterminateSystems/update-flake-lock@da03c0f078bc4b2c37ee4f7e072d34bf8f188bb3 # v29
+        with:
+          pr-title: "Update flake.lock"
+          pr-labels: dependencies
+          commit-msg: |
+            Update flake.lock
+
+            Picks up upstream fixes to the tools the image is built from.
+            Merging changes what the published image contains, so it needs a
+            release tag to reach anyone.

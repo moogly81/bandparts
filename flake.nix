@@ -16,18 +16,33 @@
       # packaged application and the container image cannot drift apart.
       toolchain = pkgs:
         let
-          # the languages our charts are printed in
+          # Tesseract ships data for 129 languages, a gigabyte of it. Our
+          # charts are printed in five, and the rest was half the image.
+          #
+          # 'osd' is not a language: it is the orientation and script
+          # detection model, which ocrmypdf calls on every page. Leaving it
+          # out builds happily and then fails at run time, which ocrmypdf's
+          # own test suite catches during the build.
           tesseract = pkgs.tesseract.override {
-            enableLanguages = [ "eng" "spa" "fra" "ita" "deu" ];
+            enableLanguages = [ "eng" "spa" "fra" "ita" "deu" "osd" ];
+          };
+
+          # ocrmypdf propagates tesseract too, so without this the image
+          # carries both builds: ours and the one with every language in it.
+          # The headless ghostscript likewise drops an X11 stack no batch
+          # process can use.
+          ocrmypdf = pkgs.ocrmypdf.override {
+            inherit tesseract;
+            ghostscript_headless = pkgs.ghostscript_headless;
           };
         in
         [
           pkgs.qpdf          # page extraction
           pkgs.poppler-utils # pdfinfo / pdftotext
-          pkgs.ocrmypdf      # OCR for scans
+          ocrmypdf           # OCR for scans
           pkgs.exiftool      # document properties
           pkgs.unpaper       # deskew / despeckle, used by --clean
-          pkgs.ghostscript   # ocrmypdf dependency
+          pkgs.ghostscript_headless # ocrmypdf dependency
           pkgs.libxml2       # xmllint, for the MusicXML schema check
           tesseract
         ];

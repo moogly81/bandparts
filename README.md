@@ -69,6 +69,7 @@ data/in/         drop raw charts here        (git-ignored)
 data/out/         generated parts land here   (git-ignored)
 flake.nix, .envrc   pinned toolchain: the dev shell, the package and the
                     published image all come from here
+scripts/            build the image locally, including on macOS
 ```
 
 Scores are copyrighted, so the whole of `data/` is kept out of git by a single
