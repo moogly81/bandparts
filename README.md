@@ -66,8 +66,8 @@ tests/              python -m unittest discover -s tests
 docs/               the pages listed above
 data/inbox/         drop raw charts here        (git-ignored)
 data/parts/         generated parts land here   (git-ignored)
-Dockerfile          the published image
-flake.nix, .envrc   pinned toolchain, entered automatically by direnv
+flake.nix, .envrc   pinned toolchain: the dev shell, the package and the
+                    published image all come from here
 ```
 
 Scores are copyrighted, so the whole of `data/` is kept out of git by a single
