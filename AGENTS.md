@@ -49,6 +49,7 @@ than reformatting files.
 | `bandparts/pdftools.py` | every call to an external tool |
 | `bandparts/tagging.py` | titles and metadata |
 | `bandparts/musicxml.py` | the MusicXML checks, unrelated to the splitter |
+| `bandparts/scoreheader.py` | putting the real title and credits back after recognition |
 
 ## House style
 
@@ -102,8 +103,14 @@ with a scanner streak through it.
 - Do not repair a corrupt score by inventing notes. `musicxml-check` reports
   bad bars deliberately and leaves the musical decision to a musician.
 - Do not turn optical music recognition into a feature of this tool. It was
-  evaluated and rejected: on one two-page part it lost every multi-bar rest
-  count and left six unusable bars.
+  evaluated and rejected for the notes: on one two-page part it lost every
+  multi-bar rest count and left six unusable bars. `musicxml-header` and
+  `musicxml-check` help with the output of someone else's recogniser; they do
+  not make this a recogniser.
+- Do not reposition credits in `scoreheader.py`. Their coordinates come from
+  the scanned page and are the only reason the result resembles the original.
+  Labelling a credit must leave `default-x` and `default-y` untouched, and a
+  test enforces that.
 - Do not rename output files or change the `Title - Voice.pdf` convention.
   People's tablets, setlists and muscle memory depend on it.
 - Do not widen the Docker image with tools "that might be useful".

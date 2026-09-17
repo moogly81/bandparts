@@ -211,6 +211,46 @@ filenames need help, and that is what a manifest is for - see
 Every field is optional: an entry may fix the credits only and still let the
 page ranges be found automatically.
 
+## Optical music recognition
+
+Out of scope for the splitter, but if you do run parts through
+[Audiveris](https://github.com/Audiveris/audiveris), two things make the
+result far better, and both are easy to miss.
+
+**Give Audiveris legacy OCR data.** The macOS build ships none, so it reads
+no text at all: no title, no part name, no rehearsal marks. Pointing it at
+Homebrew's tesseract is not enough either, because Audiveris uses the legacy
+engine and Homebrew ships LSTM-only models. Fetch the full ones:
+
+```sh
+mkdir -p ~/.local/share/tessdata-legacy && cd ~/.local/share/tessdata-legacy
+for l in eng fra spa ita; do
+  curl -sSLO "https://github.com/tesseract-ocr/tessdata/raw/main/$l.traineddata"
+done
+export TESSDATA_PREFIX=~/.local/share/tessdata-legacy
+```
+
+Then run it, and repair the header afterwards:
+
+```sh
+Audiveris -batch -export -output out/ "parts/Tune - Trombone 1.pdf"
+bin/musicxml-header "out/Tune - Trombone 1.mxl" --from-pdf "parts/Tune - Trombone 1.pdf"
+bin/musicxml-check  "out/Tune - Trombone 1.mxl"
+```
+
+`musicxml-header` exists because recognition reads the words correctly but
+guesses their roles from position and size, and on a big-band part it guesses
+wrong: the part name becomes the title, the tune name becomes a composer, the
+key note becomes the movement. Since the PDF was already tagged, the true
+answers are known. The fix labels the text that is already on the page and
+never moves it, because those positions came from the scan and are what make
+the result resemble the original.
+
+What this does **not** fix is the notes. On a two-page trombone part,
+recognition lost every multi-bar rest count and left six bars that do not add
+up. Text quality and note quality are separate problems, and only the first
+has an easy answer.
+
 ## Checking MusicXML
 
 A separate tool for the other direction: if you run a part through optical
@@ -245,6 +285,7 @@ It exits non-zero when something is wrong, so it can gate a batch. Reading
 bandparts/      the package: voice detection, PDF tools, tagging, CLI
 bin/bandparts   wrapper so you can run it from anywhere in the repo
 bin/musicxml-check  the MusicXML schema and bar-length checks
+bin/musicxml-header put the real title and credits back after recognition
 AGENTS.md       the brief for AI assistants, symlinked per tool
 manifests/      per-book overrides
 tests/          unit tests, run with python -m unittest discover -s tests
