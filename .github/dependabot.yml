@@ -5,6 +5,7 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: "/"
+    # The workflow pins actions by commit; this keeps those pins current.
     schedule:
       interval: weekly
       day: monday
