@@ -123,13 +123,22 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          # A manifest list cannot be loaded into the local daemon, so build
+          # both architectures only when the result is going to a registry.
+          platforms: ${{ steps.publish.outputs.yes == 'true' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           push: ${{ steps.publish.outputs.yes == 'true' }}
           load: ${{ steps.publish.outputs.yes != 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # A pull request builds but never publishes, so prove the image runs.
+      - name: Smoke test the image
+        if: steps.publish.outputs.yes != 'true'
+        run: |
+          tag=$(echo "${{ steps.meta.outputs.tags }}" | head -1)
+          docker run --rm "$tag" --help
 
       - name: Description
         if: steps.publish.outputs.yes == 'true' && github.ref == 'refs/heads/main'
