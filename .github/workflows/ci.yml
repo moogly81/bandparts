@@ -145,11 +145,48 @@ jobs:
 
       # streamLayeredImage writes the tarball on demand, so the image is
       # produced once and read straight into the daemon.
-      - name: Load and smoke test
+      - name: Load
+        run: ./result | docker load
+
+      # A scan, not a text PDF: this exercises tesseract, ghostscript and the
+      # split together, inside the image, which 'ocrmypdf --version' does not.
+      # It does not cover every way the toolchain can be wrong - a tesseract
+      # missing the orientation model passes this - but it catches OCR being
+      # broken outright.
+      - name: Split a scanned chart inside the image
         run: |
-          ./result | docker load
-          docker run --rm bandparts:latest --help > /dev/null
-          docker run --rm --entrypoint ocrmypdf bandparts:latest --version
+          set -euo pipefail
+          mkdir -p smoke/in/testbook smoke/out
+
+          # A page per voice, named where the tool looks, then flattened to
+          # pixels so that the text can only be recovered by OCR.
+          cat > smoke/chart.ps <<'PS'
+          %!PS
+          /Helvetica findfont 24 scalefont setfont
+          72 700 moveto (Trombone 1) show
+          72 660 moveto (Smoke Test) show
+          showpage
+          /Helvetica findfont 24 scalefont setfont
+          72 700 moveto (Trombone 2) show
+          72 660 moveto (Smoke Test) show
+          showpage
+          PS
+
+          # pdfimage24 renders each page to pixels and wraps them in a PDF,
+          # so what comes out has no text layer: a scan, in every way that
+          # matters to the tool.
+          docker run --rm -v "$PWD/smoke:/smoke" --entrypoint gs bandparts:latest \
+            -sDEVICE=pdfimage24 -r150 -dNOPAUSE -dBATCH -q \
+            -sOutputFile="/smoke/in/testbook/Smoke Test.pdf" /smoke/chart.ps
+
+          docker run --rm -v "$PWD/smoke:/work/data" bandparts:latest
+
+          ls -1 smoke/out/testbook/
+          test -f "smoke/out/testbook/Smoke Test - Trombone 1.pdf"
+          test -f "smoke/out/testbook/Smoke Test - Trombone 2.pdf"
+
+      - name: Help and version still respond
+        run: docker run --rm bandparts:latest --help > /dev/null
 
       # A fork has no Docker Hub token; GHCR always works, so publishing
       # degrades to one registry instead of failing.

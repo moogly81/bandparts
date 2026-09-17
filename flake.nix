@@ -19,10 +19,11 @@
           # Tesseract ships data for 129 languages, a gigabyte of it. Our
           # charts are printed in five, and the rest was half the image.
           #
-          # 'osd' is not a language: it is the orientation and script
-          # detection model, which ocrmypdf calls on every page. Leaving it
-          # out builds happily and then fails at run time, which ocrmypdf's
-          # own test suite catches during the build.
+          # 'osd' is not a language but the orientation and script detection
+          # model. Nothing we currently run needs it - the image splits a
+          # scan correctly without it - but ocrmypdf's own test suite fails
+          # without it, and --rotate-pages would too. Eleven megabytes is not
+          # worth the trap it would leave for whoever adds that flag.
           tesseract = pkgs.tesseract.override {
             enableLanguages = [ "eng" "spa" "fra" "ita" "deu" "osd" ];
           };
@@ -31,10 +32,23 @@
           # carries both builds: ours and the one with every language in it.
           # The headless ghostscript likewise drops an X11 stack no batch
           # process can use.
-          ocrmypdf = pkgs.ocrmypdf.override {
+          #
+          # Overriding it means it is no longer in the binary cache, so it is
+          # built here; running upstream's test suite as well turned a
+          # 25-second job into five minutes. We change no ocrmypdf code, only
+          # which tesseract it points at.
+          #
+          # This does lose a real check: upstream's suite is what caught the
+          # missing orientation model above, and CI's smoke test does not -
+          # it splits a scan correctly either way. Anyone narrowing the
+          # toolchain further should run the build once with doCheck on.
+          ocrmypdf = (pkgs.ocrmypdf.override {
             inherit tesseract;
             ghostscript_headless = pkgs.ghostscript_headless;
-          };
+          }).overridePythonAttrs (previous: {
+            doCheck = false;
+            doInstallCheck = false;
+          });
         in
         [
           pkgs.qpdf          # page extraction
