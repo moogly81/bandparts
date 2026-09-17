@@ -99,7 +99,7 @@
               # ocrmypdf writes page images here, and the data folders are the
               # mount points; both must exist and be writable by the user.
               fakeRootCommands = ''
-                mkdir -p tmp work/data/inbox work/data/parts
+                mkdir -p tmp work/data/in work/data/out
                 chmod 1777 tmp
                 chown -R 1000:1000 work
               '';
@@ -107,8 +107,8 @@
 
               config = {
                 Entrypoint = [ "${app}/bin/bandparts" ];
-                # No arguments: the defaults read /work/data/inbox and write
-                # /work/data/parts, so one mount and no flags is a full run.
+                # No arguments: the defaults read /work/data/in and write
+                # /work/data/out, so one mount and no flags is a full run.
                 Cmd = [ ];
                 WorkingDir = "/work";
                 User = "1000:1000";

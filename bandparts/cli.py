@@ -1,4 +1,4 @@
-"""Command line entry point: inbox of raw charts in, tagged parts out."""
+"""Command line entry point: a folder of raw charts in, tagged parts out."""
 
 from __future__ import annotations
 
@@ -17,17 +17,17 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
         prog="bandparts",
         description="Split big-band chart PDFs into one tagged file per voice.",
     )
-    parser.add_argument("inbox", nargs="?", default="data/inbox",
-                        help="folder holding the raw charts (default: data/inbox)")
-    parser.add_argument("parts", nargs="?", default="data/parts",
-                        help="folder to write the split parts to (default: data/parts)")
+    parser.add_argument("--in", dest="source", metavar="FOLDER", default="data/in",
+                        help="folder holding the raw charts (default: data/in)")
+    parser.add_argument("--out", dest="destination", metavar="FOLDER", default="data/out",
+                        help="folder to write the split parts to (default: data/out)")
     parser.add_argument("-l", "--languages", default="", help="tesseract languages used when a scan needs OCR (default eng+spa+fra)")
     parser.add_argument("-r", "--rename", action="append", default=[], metavar="OLD=NEW",
                         help="rename a detected voice, e.g. -r 'Bass Trombone=Trombone 4' (repeatable)")
     parser.add_argument("--clean", action="store_true", help="deskew and despeckle scans before splitting them")
-    parser.add_argument("--musicxml", action="store_true",
-                        help="also run optical music recognition on each part (needs Audiveris; "
-                             "the notes will need repair, see the README)")
+    parser.add_argument("--omr", action="store_true",
+                        help="also run optical music recognition, writing a .mxl beside each "
+                             "part (needs Audiveris; the notes will need repair, see the docs)")
     parser.add_argument("-n", "--dry-run", action="store_true", help="report what would be produced, write nothing")
     return parser.parse_args(argv)
 
@@ -53,18 +53,18 @@ def plan(source: str, entry: manifests.Entry, languages: str, clean: bool, workd
     return readable, voices.group(detected)
 
 
-def find_charts(inbox: str) -> list[str]:
-    """Every PDF under the inbox, as paths relative to it.
+def find_charts(source: str) -> list[str]:
+    """Every PDF under the input folder, as paths relative to it.
 
     Sub-folders are kept: 'bbcf-2026-2027/03.Bones/In The Mood.pdf' produces
     its parts under 'parts/bbcf-2026-2027/03.Bones/', so each book a band
     hands you stays separate without any extra flag.
     """
     found = []
-    for folder, _, filenames in os.walk(inbox):
+    for folder, _, filenames in os.walk(source):
         for filename in filenames:
             if filename.lower().endswith(".pdf") and not filename.startswith("."):
-                found.append(os.path.relpath(os.path.join(folder, filename), inbox))
+                found.append(os.path.relpath(os.path.join(folder, filename), source))
     return sorted(found)
 
 
@@ -91,10 +91,10 @@ def run(options: argparse.Namespace) -> int:
     if absent:
         sys.exit("missing required tool(s): " + ", ".join(absent))
 
-    if options.musicxml and not options.dry_run:
+    if options.omr and not options.dry_run:
         if omr.find_audiveris() is None:
             sys.exit(
-                "--musicxml needs Audiveris. Install it, or set AUDIVERIS to "
+                "--omr needs Audiveris. Install it, or set AUDIVERIS to "
                 "its executable; see the README."
             )
         if omr.legacy_tessdata() is None:
@@ -105,21 +105,21 @@ def run(options: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
 
-    if not os.path.isdir(options.inbox):
-        sys.exit(f"no such folder: {options.inbox}/")
+    if not os.path.isdir(options.source):
+        sys.exit(f"no such folder: {options.source}/")
 
-    charts = find_charts(options.inbox)
+    charts = find_charts(options.source)
     if not charts:
-        sys.exit(f"no PDF found in {options.inbox}/")
+        sys.exit(f"no PDF found in {options.source}/")
 
     # one manifest per book, found by name and read the first time the book
     # is met; a book without one is processed on detection alone
     books: dict[str, tuple[dict[str, manifests.Entry], manifests.Defaults]] = {}
 
     def settings_for(chart: str):
-        book = tagging.collection_from_folder(chart, options.inbox)
+        book = tagging.collection_from_folder(chart, options.source)
         if book not in books:
-            folder = os.path.join(options.inbox, os.path.dirname(chart).split(os.sep)[0])
+            folder = os.path.join(options.source, os.path.dirname(chart).split(os.sep)[0])
             path = manifests.discover(book, folder)
             if path:
                 print(f"{book}: using {path}")
@@ -135,7 +135,7 @@ def run(options: argparse.Namespace) -> int:
             # manifest a book uses appears above the book, not inside it
             book, (overrides, defaults) = settings_for(chart)
             print(chart)
-            source = os.path.join(options.inbox, chart)
+            source = os.path.join(options.source, chart)
             entry = overrides.get(os.path.basename(chart), manifests.Entry())
             title = entry.title or tagging.title_from_filename(chart)
 
@@ -145,7 +145,7 @@ def run(options: argparse.Namespace) -> int:
             clean = options.clean or defaults.clean
             renames = {**defaults.rename, **command_line_renames}
 
-            destination_folder = os.path.join(options.parts, os.path.dirname(chart))
+            destination_folder = os.path.join(options.destination, os.path.dirname(chart))
             os.makedirs(destination_folder, exist_ok=True)
 
             readable, blocks = plan(source, entry, languages, clean, workdir, options.dry_run)
@@ -163,14 +163,14 @@ def run(options: argparse.Namespace) -> int:
                 pdftools.extract_pages(readable, first, last, destination)
                 pdftools.tag(destination, tagging.fields(title, voice, entry.composer, entry.arranger, collection))
 
-                if options.musicxml:
+                if options.omr:
                     try:
                         print(f"        {transcribe(destination, title, voice, entry.composer, entry.arranger)}")
                     except (omr.RecognitionError, subprocess.TimeoutExpired) as error:
                         print(f"        ! {error}", file=sys.stderr)
 
     verb = "would write" if options.dry_run else "wrote"
-    print(f"\n{len(charts)} chart(s) read, {verb} {written} part(s) in {options.parts}/")
+    print(f"\n{len(charts)} chart(s) read, {verb} {written} part(s) in {options.destination}/")
     return 0
 
 

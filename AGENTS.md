@@ -18,7 +18,7 @@ tool call usually removes the feature.
 
 ## Never commit music
 
-`data/` holds copyrighted scores: `data/inbox` going in, `data/parts` coming
+`data/` holds copyrighted scores: `data/in` going in, `data/out` coming
 out. A single `.gitignore` rule covers the whole tree, and the image is built
 by Nix from the flake, which copies only what the flake names. Both must stay
 that way, and the rule must stay a single one: a rule per folder is easy to
@@ -54,7 +54,7 @@ than reformatting files.
 | `bandparts/tagging.py` | titles and metadata |
 | `bandparts/musicxml.py` | the MusicXML checks, unrelated to the splitter |
 | `bandparts/scoreheader.py` | putting the real title and credits back after recognition |
-| `bandparts/omr.py` | the optional `--musicxml` step, off unless asked for |
+| `bandparts/omr.py` | the optional `--omr` step, off unless asked for |
 
 ## House style
 
@@ -88,8 +88,8 @@ with a scanner streak through it.
 - A multi-measure rest is allowed to "not fill" its bar in `musicxml.py`;
   one written rest stands for many bars.
 - Chord notes and grace notes do not advance the cursor when measuring a bar.
-- `bandparts` walks `data/inbox` recursively and mirrors the folder structure
-  into `data/parts`. A flat run is a special case of that, not the normal one.
+- `bandparts` walks `data/in` recursively and mirrors the folder structure
+  into `data/out`. A flat run is a special case of that, not the normal one.
 - `bin/*` deliberately does not `cd` into the repository. Paths must mean
   what they mean in the user's shell; the data folders are a convenience for
   working in the checkout, not where charts are required to live.

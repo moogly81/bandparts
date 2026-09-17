@@ -59,7 +59,7 @@ jobs:
           set -euo pipefail
           # Build a chart the same shape as a real one: a page per voice,
           # with the instrument named in the header where the tool looks.
-          mkdir -p data/inbox/test
+          mkdir -p data/in/test
           python - <<'PY'
           from pathlib import Path
           import subprocess
@@ -74,14 +74,14 @@ jobs:
               pdf = ps.with_suffix(".pdf")
               subprocess.run(["ps2pdf", str(ps), str(pdf)], check=True)
               pages.append(str(pdf))
-          subprocess.run(["qpdf", "--empty", "--pages", *pages, "--", "data/inbox/test/Test Chart.pdf"], check=True)
+          subprocess.run(["qpdf", "--empty", "--pages", *pages, "--", "data/in/test/Test Chart.pdf"], check=True)
           PY
           # No arguments: this also checks the defaults still point at data/.
           bandparts
-          ls -1 data/parts/test/
-          test -f "data/parts/test/Test Chart - Trombone 1.pdf"
-          test -f "data/parts/test/Test Chart - Trombone 2.pdf"
-          exiftool -s -Title "data/parts/test/Test Chart - Trombone 1.pdf" | grep -q "Trombone 1"
+          ls -1 data/out/test/
+          test -f "data/out/test/Test Chart - Trombone 1.pdf"
+          test -f "data/out/test/Test Chart - Trombone 2.pdf"
+          exiftool -s -Title "data/out/test/Test Chart - Trombone 1.pdf" | grep -q "Trombone 1"
 
   # The image is built by Nix from the same flake as the dev shell, so the
   # tools inside it are the ones contributors actually test with. Each

@@ -45,14 +45,14 @@ def title_from_filename(filename: str) -> str:
     return stem or "Untitled"
 
 
-def collection_from_folder(chart: str, inbox: str) -> str:
+def collection_from_folder(chart: str, source: str) -> str:
     """The book a chart belongs to, taken from the folder holding it.
 
     Charts arrive one folder per book, so the folder already carries the
     answer: 'bbcf-2026-2027/03-bones/tune.pdf' belongs to 'bbcf-2026-2027'.
     Sub-folders are sections within a book, not books, so only the first
-    component counts. A chart sitting directly in the inbox takes the name of
-    the inbox itself, which is what makes 'bandparts ~/charts/bbcf-2026-2027'
+    component counts. A chart sitting directly in the input folder takes the
+    name of that folder, which is what makes '--in ~/charts/bbcf-2026-2027'
     do the obvious thing.
 
     The name is used verbatim. Guessing that 'bbcf' wants to be 'BBCF' would
@@ -60,7 +60,7 @@ def collection_from_folder(chart: str, inbox: str) -> str:
     """
     book = os.path.dirname(chart).split(os.sep)[0]
     if not book:
-        book = os.path.basename(os.path.abspath(inbox))
+        book = os.path.basename(os.path.abspath(source))
     return book
 
 

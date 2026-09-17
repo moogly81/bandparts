@@ -26,7 +26,7 @@ point at it: on macOS,
 ## Recognising parts as they are split
 
 ```sh
-bin/bandparts --musicxml          # off by default
+bin/bandparts --omr          # off by default
 ```
 
 Each part gets a `.mxl` beside its PDF, with the header already corrected and
@@ -44,8 +44,8 @@ Audiveris project, which you reopen in its editor to correct the recognition.
 Or do it by hand, one part at a time:
 
 ```sh
-Audiveris -batch -export -output out/ "data/parts/Tune - Trombone 1.pdf"
-bin/musicxml-header "out/Tune - Trombone 1.mxl" --from-pdf "data/parts/Tune - Trombone 1.pdf"
+Audiveris -batch -export -output out/ "data/out/Tune - Trombone 1.pdf"
+bin/musicxml-header "out/Tune - Trombone 1.mxl" --from-pdf "data/out/Tune - Trombone 1.pdf"
 bin/musicxml-check  "out/Tune - Trombone 1.mxl"
 ```
 
