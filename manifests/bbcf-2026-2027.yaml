@@ -1,0 +1,116 @@
+_defaults:
+  collection: BBCF 2026-2027
+  languages: eng+spa+fra
+  rename:
+    Bass Trombone: Trombone 4
+
+
+"5-10-15 Hours - Arranged by Eyal Vilner - Key of G - Parts (arrastrado).pdf":
+  title: 5-10-15 Hours
+  composer: Ruth Brown
+  arranger: Eyal Vilner
+
+"Blues for Fribourg - Trombón 1.pdf": { title: Blues for Fribourg, composer: Gerry Lopez }
+"Blues for Fribourg - Trombón 2.pdf": { title: Blues for Fribourg, composer: Gerry Lopez }
+"Blues for Fribourg - Trombón 3.pdf": { title: Blues for Fribourg, composer: Gerry Lopez }
+"Blues for Fribourg - Trombón Bajo.pdf": { title: Blues for Fribourg, composer: Gerry Lopez }
+
+"Come Fly With Me (arrastrado).pdf":
+  title: Come Fly With Me
+  composer: James Van Heusen
+  arranger: Quincy Jones
+
+# hand-written headers: OCR reads "(ST TKOMGONE" for "1st Trombone"
+"GeorgiaOnMyMindcomplete Jazzin (arrastrado).pdf":
+  title: Georgia On My Mind
+  composer: Hoagy Carmichael
+  arranger: Dave Wolpe
+  parts:
+    Trombone 1: 1-2
+    Trombone 2: 3-4
+    Trombone 3: 5-6
+    Bass Trombone: 7-8
+
+"In a Mellow Tone - Arranged by Eyal Vilner - Parts (arrastrado) 2.pdf":
+  title: In a Mellow Tone
+  composer: Duke Ellington
+  arranger: Eyal Vilner
+
+"In-The-Mood (arrastrado).pdf":
+  title: In The Mood
+  composer: Joe Garland
+  parts:
+    Trombone 1: 1-2
+    Trombone 2: 3-4
+    Trombone 3: 5-6
+    Trombone 4: 7-8
+
+"Max the Max BIG BAND - Trombón 1.pdf": { title: Max the Max, composer: Gerry Lopez }
+"Max the Max BIG BAND - Trombón 2.pdf": { title: Max the Max, composer: Gerry Lopez }
+"Max the Max BIG BAND - Trombón 3.pdf": { title: Max the Max, composer: Gerry Lopez }
+"Max the Max BIG BAND - Trombón Bajo.pdf": { title: Max the Max, composer: Gerry Lopez }
+
+"Moanin' - Jazzin (arrastrado).pdf":
+  title: Moanin'
+  composer: Bobby Timmons
+  arranger: Sergi Vergés
+
+"My Baby Just Cares for Me - Arranged by Eyal Vilner - Key of Bb - Parts (arrastrado).pdf":
+  title: My Baby Just Cares for Me
+  composer: Walter Donaldson
+  arranger: Eyal Vilner
+
+"My one and only love - Trombone 1.pdf": { title: My One and Only Love, composer: Guy B. Wood, arranger: A. Carrascosa }
+"My one and only love - Trombone 2.pdf": { title: My One and Only Love, composer: Guy B. Wood, arranger: A. Carrascosa }
+"My one and only love - Trombone 3.pdf": { title: My One and Only Love, composer: Guy B. Wood, arranger: A. Carrascosa }
+
+"New York New York(Vocal London  Orchestration) (arrastrado).pdf":
+  title: New York New York
+  composer: John Kander
+  parts: { Trombone 1: 1-2 }
+"New York New York(Vocal London  Orchestration) (arrastrado) 2.pdf":
+  title: New York New York
+  composer: John Kander
+  parts: { Trombone 2: 1-2 }
+"New York New York(Vocal London  Orchestration) (arrastrado) 3.pdf":
+  title: New York New York
+  composer: John Kander
+  parts: { Trombone 3: 1-2 }
+"New York New York(Vocal London  Orchestration) (arrastrado) 4.pdf":
+  title: New York New York
+  composer: John Kander
+  parts: { Trombone 4: 1-2 }
+
+"Quizas Quizas Quizas-78 pgs-1 (arrastrado).pdf":
+  title: Quizas Quizas Quizas
+  composer: Osvaldo Farrés
+  arranger: Joe d'Etienne
+
+"Saint Louis Blues - Arranged by Eyal Vilner - Key of C - Parts (arrastrado).pdf":
+  title: St. Louis Blues
+  composer: W. C. Handy
+  arranger: Eyal Vilner
+
+"Stompin' At The Savoy - Bones.pdf":
+  title: Stompin' At The Savoy
+  composer: Edgar Sampson
+  arranger: Gordon Brisker
+
+"The Big Apple Contest - Bones.pdf":
+  title: The Big Apple Contest
+  arranger: Eyal Vilner
+
+"The Way You Look Tonight (arrastrado).pdf":
+  title: The Way You Look Tonight
+  composer: Jerome Kern
+  arranger: John Christian
+
+"When Youre Smiling - Frank Sinatra  (arrastrado).pdf":
+  title: When You're Smiling
+  composer: Larry Shay
+  arranger: Nelson Riddle
+
+"Zaehringen midnight walk - Trombón 1.pdf": { title: Zaehringen Midnight Walk, composer: Gerry Lopez }
+"Zaehringen midnight walk - Trombón 2.pdf": { title: Zaehringen Midnight Walk, composer: Gerry Lopez }
+"Zaehringen midnight walk - Trombón 3.pdf": { title: Zaehringen Midnight Walk, composer: Gerry Lopez }
+"Zaehringen midnight walk - Trombón Bajo.pdf": { title: Zaehringen Midnight Walk, composer: Gerry Lopez }

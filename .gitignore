@@ -1,0 +1,10 @@
+# charts and generated parts stay out of git - they are copyrighted material
+inbox/*
+parts/*
+!inbox/.gitkeep
+!parts/.gitkeep
+
+__pycache__/
+*.py[cod]
+.venv/
+.DS_Store
