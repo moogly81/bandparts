@@ -7,11 +7,8 @@ bin/bandparts
 # see the plan without writing anything
 bin/bandparts --dry-run
 
-# a full run with credits, a house naming rule and cleaned-up scans
-bin/bandparts \
-    --manifest manifests/bbcf-2026-2027.yaml \
-    --rename "Bass Trombone=Trombone 4" \
-    --clean
+# the same, cleaning up scans as it goes
+bin/bandparts --clean
 ```
 
 The book each part belongs to is not an option: it comes from the folder the
@@ -39,7 +36,6 @@ bin/bandparts ~/Dropbox/bbcf/charts ~/Dropbox/bbcf/parts
 
 | Option | Purpose |
 | --- | --- |
-| `-m, --manifest` | YAML overrides for titles, credits and page ranges |
 | `-r, --rename` | rewrite a voice name, repeatable (`'Bass Trombone=Trombone 4'`) |
 | `-l, --languages` | tesseract languages for OCR (default `eng+spa+fra`) |
 | `--clean` | deskew and despeckle scans before splitting |
@@ -63,8 +59,9 @@ So, for a new pile of charts:
 2. `bin/bandparts --dry-run` and read the plan. Most engraved charts need
    nothing else.
 3. For whatever came out wrong, copy `manifests/bbcf-2026-2027.yaml` to
-   `manifests/<band>-<season>.yaml` and fix those charts there. The
-   `_defaults` block at the top carries the settings of the whole book:
+   `manifests/<band>-<season>.yaml` - named after the folder, which is how it
+   gets found - and fix those charts there. The `_defaults` block at the top
+   carries the settings of the whole book:
 
    ```yaml
    _defaults:
@@ -74,9 +71,8 @@ So, for a new pile of charts:
        Bass Trombone: Trombone 4
    ```
 
-4. `bin/bandparts -m manifests/<band>-<season>.yaml` - and that one command
-   reproduces the book from scratch any time, which is the point of keeping
-   the manifest in git.
+4. `bin/bandparts` again. The same bare command reproduces the book from
+   scratch any time, which is the point of keeping the manifest in git.
 
 Instruments already recognised: trombone (incl. bass), trumpet, alto/tenor/
 baritone sax, clarinet, flute, guitar, piano, bass, drums, vocal - in English,
@@ -86,7 +82,15 @@ anything else.
 ## Manifests
 
 Detection covers most engraved charts. Hand-written headers and creative
-filenames need help, and that is what a manifest is for - see
+filenames need help, and that is what a manifest is for.
+
+There is no flag for it: a manifest is found by the name of the book, so
+charts in `bbcf-2026-2027/` use `manifests/bbcf-2026-2027.yaml`, and the run
+says which file it read. A book that travels as a single folder can instead
+carry a `bandparts.yaml` beside its charts; if both exist, `manifests/` wins.
+A book with no manifest is processed on detection alone.
+
+See
 [`manifests/bbcf-2026-2027.yaml`](../manifests/bbcf-2026-2027.yaml):
 
 ```yaml

@@ -14,8 +14,7 @@ Every key is optional: a manifest entry may carry credits only and still let
 the page ranges be detected automatically.
 
 A reserved ``_defaults`` key holds the settings of the book as a whole, so a
-season can be reprocessed with a single ``--manifest`` flag and no other
-argument::
+season can be reprocessed from a bare command with no arguments at all::
 
     _defaults:
       collection: BBCF 2026-2027
@@ -28,9 +27,35 @@ argument::
 from __future__ import annotations
 
 import dataclasses
+import os
 import sys
 
 DEFAULTS_KEY = "_defaults"
+
+# Where a book's manifest is looked for, in order. {book} is the name of the
+# folder the charts are in, so 'bbcf-2026-2027' finds
+# 'manifests/bbcf-2026-2027.yaml' with nothing to type.
+SEARCH = (
+    "manifests/{book}.yaml",
+    "manifests/{book}.yml",
+    "{folder}/bandparts.yaml",
+    "{folder}/bandparts.yml",
+)
+
+
+def discover(book: str, folder: str) -> str:
+    """Path of the manifest belonging to a book, or "" if it has none.
+
+    Two places: ``manifests/`` beside where you are working, which is what
+    keeps manifests in git while the charts stay out of it, and a
+    ``bandparts.yaml`` sitting with the charts themselves, for a book that
+    travels as one folder.
+    """
+    for pattern in SEARCH:
+        candidate = pattern.format(book=book, folder=folder)
+        if os.path.isfile(candidate):
+            return candidate
+    return ""
 
 
 @dataclasses.dataclass

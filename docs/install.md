@@ -12,13 +12,14 @@ and Windows. Charts are mounted at run time, never copied into the image.
 docker run --rm -v "$PWD/data:/work/data" moogly81/bandparts
 ```
 
-With a manifest, mount that too:
+Manifests are found under `manifests/`, so mount that too and they are picked
+up by name, with nothing to pass:
 
 ```sh
 docker run --rm \
   -v "$PWD/data:/work/data" \
   -v "$PWD/manifests:/work/manifests:ro" \
-  moogly81/bandparts -m manifests/bbcf-2026-2027.yaml
+  moogly81/bandparts
 ```
 
 The container runs as an ordinary user, so the parts it writes belong to you.

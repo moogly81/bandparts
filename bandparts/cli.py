@@ -21,7 +21,6 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
                         help="folder holding the raw charts (default: data/inbox)")
     parser.add_argument("parts", nargs="?", default="data/parts",
                         help="folder to write the split parts to (default: data/parts)")
-    parser.add_argument("-m", "--manifest", help="YAML overrides for titles, credits and page ranges")
     parser.add_argument("-l", "--languages", default="", help="tesseract languages used when a scan needs OCR (default eng+spa+fra)")
     parser.add_argument("-r", "--rename", action="append", default=[], metavar="OLD=NEW",
                         help="rename a detected voice, e.g. -r 'Bass Trombone=Trombone 4' (repeatable)")
@@ -113,23 +112,38 @@ def run(options: argparse.Namespace) -> int:
     if not charts:
         sys.exit(f"no PDF found in {options.inbox}/")
 
-    overrides, defaults = manifests.load(options.manifest)
+    # one manifest per book, found by name and read the first time the book
+    # is met; a book without one is processed on detection alone
+    books: dict[str, tuple[dict[str, manifests.Entry], manifests.Defaults]] = {}
 
-    # command line flags win over the book-wide settings of the manifest
-    languages = options.languages or defaults.languages or "eng+spa+fra"
-    clean = options.clean or defaults.clean
-    renames = {**defaults.rename, **dict(pair.split("=", 1) for pair in options.rename)}
+    def settings_for(chart: str):
+        book = tagging.collection_from_folder(chart, options.inbox)
+        if book not in books:
+            folder = os.path.join(options.inbox, os.path.dirname(chart).split(os.sep)[0])
+            path = manifests.discover(book, folder)
+            if path:
+                print(f"{book}: using {path}")
+            books[book] = manifests.load(path)
+        return book, books[book]
 
+    command_line_renames = dict(pair.split("=", 1) for pair in options.rename)
     written = 0
 
     with tempfile.TemporaryDirectory(prefix="bandparts-") as workdir:
         for chart in charts:
+            # before the chart is announced, so that the line reporting which
+            # manifest a book uses appears above the book, not inside it
+            book, (overrides, defaults) = settings_for(chart)
             print(chart)
             source = os.path.join(options.inbox, chart)
             entry = overrides.get(os.path.basename(chart), manifests.Entry())
             title = entry.title or tagging.title_from_filename(chart)
-            # a manifest names the book properly; otherwise the folder does
-            collection = defaults.collection or tagging.collection_from_folder(chart, options.inbox)
+
+            # command line flags win over the book-wide settings of the manifest
+            collection = defaults.collection or book
+            languages = options.languages or defaults.languages or "eng+spa+fra"
+            clean = options.clean or defaults.clean
+            renames = {**defaults.rename, **command_line_renames}
 
             destination_folder = os.path.join(options.parts, os.path.dirname(chart))
             os.makedirs(destination_folder, exist_ok=True)

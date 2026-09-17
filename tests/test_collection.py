@@ -49,3 +49,68 @@ class CollectionReachesTheTags(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ManifestDiscovery(unittest.TestCase):
+    """A book's manifest is found by name, not passed on the command line."""
+
+    def setUp(self):
+        import tempfile
+
+        from bandparts import manifest as manifests
+
+        self.manifests = manifests
+        self.root = tempfile.mkdtemp(prefix="bandparts-test-")
+        self.cwd = os.getcwd()
+        os.chdir(self.root)
+
+    def tearDown(self):
+        import shutil
+
+        os.chdir(self.cwd)
+        shutil.rmtree(self.root, ignore_errors=True)
+
+    def write(self, path):
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write("_defaults:\n  collection: BBCF 2026-2027\n")
+        return path
+
+    def test_a_book_finds_the_manifest_named_after_it(self):
+        self.write("manifests/bbcf-2026-2027.yaml")
+        self.assertEqual(
+            self.manifests.discover("bbcf-2026-2027", "data/inbox/bbcf-2026-2027"),
+            "manifests/bbcf-2026-2027.yaml",
+        )
+
+    def test_another_books_manifest_is_not_used(self):
+        self.write("manifests/quintet-2027.yaml")
+        self.assertEqual(
+            self.manifests.discover("bbcf-2026-2027", "data/inbox/bbcf-2026-2027"), ""
+        )
+
+    def test_a_manifest_may_travel_with_the_charts(self):
+        self.write("charts/bbcf-2026-2027/bandparts.yaml")
+        self.assertEqual(
+            self.manifests.discover("bbcf-2026-2027", "charts/bbcf-2026-2027"),
+            "charts/bbcf-2026-2027/bandparts.yaml",
+        )
+
+    def test_the_manifests_folder_wins_over_the_one_beside_the_charts(self):
+        self.write("manifests/bbcf-2026-2027.yaml")
+        self.write("charts/bbcf-2026-2027/bandparts.yaml")
+        self.assertEqual(
+            self.manifests.discover("bbcf-2026-2027", "charts/bbcf-2026-2027"),
+            "manifests/bbcf-2026-2027.yaml",
+        )
+
+    def test_yml_spelling_is_accepted(self):
+        self.write("manifests/bbcf-2026-2027.yml")
+        self.assertEqual(
+            self.manifests.discover("bbcf-2026-2027", "data/inbox/bbcf-2026-2027"),
+            "manifests/bbcf-2026-2027.yml",
+        )
+
+    def test_a_book_without_a_manifest_is_not_an_error(self):
+        self.assertEqual(self.manifests.discover("bbcf-2026-2027", "data/inbox"), "")
+        self.assertEqual(self.manifests.load(""), ({}, self.manifests.Defaults()))
