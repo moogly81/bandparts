@@ -213,6 +213,7 @@ It exits non-zero when something is wrong, so it can gate a batch. Reading
 bandparts/      the package: voice detection, PDF tools, tagging, CLI
 bin/bandparts   wrapper so you can run it from anywhere in the repo
 bin/musicxml-check  the MusicXML schema and bar-length checks
+AGENTS.md       the brief for AI assistants, symlinked per tool
 manifests/      per-book overrides
 tests/          unit tests, run with python -m unittest discover -s tests
 inbox/          drop raw charts here        (git-ignored)
@@ -224,6 +225,15 @@ flake.nix       pinned toolchain (nix develop)
 
 Scores are copyrighted, so `inbox/` and `parts/` keep their contents out of
 git. Only the tooling is versioned.
+
+## Contributing
+
+Patches are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). If you work with
+an AI assistant, [AGENTS.md](AGENTS.md) is the brief to point it at
+(`CLAUDE.md`, `GEMINI.md` and `.github/copilot-instructions.md` are symlinks
+to the same file, so every tool finds it).
+
+One rule above all others: never commit sheet music.
 
 ## Known limits
 
