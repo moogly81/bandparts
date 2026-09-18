@@ -299,7 +299,11 @@ jobs:
         env:
           USERNAME: ${{ vars.DOCKERHUB_USERNAME || github.repository_owner }}
           TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITHUB_TOKEN can publish to GHCR but not delete from it. Set
+          # GHCR_DELETE_TOKEN to a PAT with delete:packages to have the
+          # staging tags removed there too; without it they are left, and
+          # the step says so.
+          GH_TOKEN: ${{ secrets.GHCR_DELETE_TOKEN || secrets.GITHUB_TOKEN }}
           SHA: ${{ github.sha }}
           HAVE_HUB: ${{ steps.hub.outputs.have }}
         run: |
@@ -317,9 +321,9 @@ jobs:
             done
           fi
 
-          # GHCR keeps them as untagged versions rather than deleting the
-          # blobs, and the token may not be allowed to remove versions at
-          # all, so a failure here is reported and ignored.
+          # A failure here is reported and ignored: without a delete-capable
+          # token this is expected, and a tidy tag list is not worth failing
+          # a release over.
           for arch in amd64 arm64; do
             digest=$(curl -sS -H "Authorization: Bearer $(printf %s "$GH_TOKEN" | base64)" \
               -H "Accept: application/vnd.oci.image.index.v1+json" \
@@ -329,6 +333,8 @@ jobs:
               curl -sS -X DELETE -H "Authorization: Bearer $(printf %s "$GH_TOKEN" | base64)" \
                 "https://ghcr.io/v2/${{ github.repository }}/manifests/$digest" \
                 -o /dev/null -w "ghcr %{http_code} $SHA-$arch\n" || true
+            else
+              echo "ghcr: no digest for $SHA-$arch, staging tag left in place"
             fi
           done
 
