@@ -45,23 +45,24 @@ def title_from_filename(filename: str) -> str:
     return stem or "Untitled"
 
 
-def collection_from_folder(chart: str, source: str) -> str:
+def collection_from_folder(chart: str) -> str:
     """The book a chart belongs to, taken from the folder holding it.
 
     Charts arrive one folder per book, so the folder already carries the
     answer: 'bbcf-2026-2027/03-bones/tune.pdf' belongs to 'bbcf-2026-2027'.
     Sub-folders are sections within a book, not books, so only the first
-    component counts. A chart sitting directly in the input folder takes the
-    name of that folder, which is what makes '--in ~/charts/bbcf-2026-2027'
-    do the obvious thing.
+    component counts.
+
+    The input folder itself names nothing. It is wherever the charts happen to
+    sit today - '~/Downloads/originals', a scratch folder, a mounted disk - and
+    letting it name the book tags parts with whatever that folder was called.
+    A chart sitting loose in it therefore has no book, and no Collection tag,
+    until a manifest gives it one.
 
     The name is used verbatim. Guessing that 'bbcf' wants to be 'BBCF' would
     be wrong as often as right; a manifest sets the pretty form explicitly.
     """
-    book = os.path.dirname(chart).split(os.sep)[0]
-    if not book:
-        book = os.path.basename(os.path.abspath(source))
-    return book
+    return os.path.dirname(chart).split(os.sep)[0]
 
 
 def credit(composer: str, arranger: str) -> str:

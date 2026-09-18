@@ -12,12 +12,24 @@ bin/bandparts --clean
 ```
 
 The book each part belongs to is not an option: it comes from the folder the
-chart sits in. `data/in/bbcf-2026-2027/03-bones/tune.pdf` is tagged
-`bbcf-2026-2027`, sub-folders counting as sections of that book rather than
-books of their own. Point the tool straight at a book and the same holds:
+chart sits in, *inside* the input folder. `data/in/bbcf-2026-2027/03-bones/tune.pdf`
+is tagged `bbcf-2026-2027`, sub-folders counting as sections of that book
+rather than books of their own.
+
+The input folder itself names nothing. It is wherever the charts happen to
+live today - `~/Downloads/originals`, a scratch folder, a mounted disk - and a
+name like that has no business ending up in your tags. So a chart sitting
+loose in it gets no book and no `Collection` tag:
 
 ```sh
-bin/bandparts --in ~/Dropbox/bbcf-2026-2027 --out ~/Dropbox/parts  # tagged bbcf-2026-2027
+bin/bandparts --in ~/Downloads/originals --out ~/Downloads/out   # no collection
+```
+
+To get one, either put the charts in a folder named after the book, or name it
+in a manifest:
+
+```sh
+bin/bandparts --in ~/Dropbox/charts --out ~/Dropbox/parts   # charts/bbcf-2026-2027/*.pdf
 ```
 
 The folder name is used as it is written. If you want `BBCF 2026-2027` on the
@@ -91,6 +103,14 @@ charts in `bbcf-2026-2027/` use `manifests/bbcf-2026-2027.yaml`, and the run
 says which file it read. A book that travels as a single folder can instead
 carry a `bandparts.yaml` beside its charts; if both exist, `manifests/` wins.
 A book with no manifest is processed on detection alone.
+
+Charts loose in the input folder have no book name to look up, so for them
+only `bandparts.yaml` beside the charts applies - which is also how you give
+that pile a collection:
+
+```sh
+printf '_defaults:\n  collection: BBCF 2026-2027\n' > ~/Downloads/originals/bandparts.yaml
+```
 
 See
 [`manifests/bbcf-2026-2027.yaml`](../manifests/bbcf-2026-2027.yaml):

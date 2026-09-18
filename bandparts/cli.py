@@ -113,16 +113,18 @@ def run(options: argparse.Namespace) -> int:
         sys.exit(f"no PDF found in {options.source}/")
 
     # one manifest per book, found by name and read the first time the book
-    # is met; a book without one is processed on detection alone
+    # is met; a book without one is processed on detection alone, and charts
+    # loose in the input folder form the book named "", which has no manifest
+    # to look up by name and no Collection tag unless one names it
     books: dict[str, tuple[dict[str, manifests.Entry], manifests.Defaults]] = {}
 
     def settings_for(chart: str):
-        book = tagging.collection_from_folder(chart, options.source)
+        book = tagging.collection_from_folder(chart)
         if book not in books:
-            folder = os.path.join(options.source, os.path.dirname(chart).split(os.sep)[0])
+            folder = os.path.join(options.source, book)
             path = manifests.discover(book, folder)
             if path:
-                print(f"{book}: using {path}")
+                print(f"{book}: using {path}" if book else f"using {path}")
             books[book] = manifests.load(path)
         return book, books[book]
 

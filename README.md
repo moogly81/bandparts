@@ -20,8 +20,8 @@ belong to which instrument, and writes them out as `Title - Voice.pdf`.
 3. **Split on voice changes** with `qpdf`, keeping continuation pages attached
    to the part they belong to.
 4. **Tag the result** with `exiftool`: title, composer, arranger, part, and
-   the book it came from - taken from the folder, not typed in - so the files
-   sort and search properly on a tablet.
+   the book it came from - taken from the folder holding the chart, not typed
+   in - so the files sort and search properly on a tablet.
 
 ## Quick start
 

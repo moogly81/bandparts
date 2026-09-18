@@ -9,33 +9,25 @@ from bandparts import tagging
 class CollectionFromFolder(unittest.TestCase):
     def test_book_folder_names_the_collection(self):
         self.assertEqual(
-            tagging.collection_from_folder("bbcf-2026-2027/tune.pdf", "data/in"),
+            tagging.collection_from_folder("bbcf-2026-2027/tune.pdf"),
             "bbcf-2026-2027",
         )
 
     def test_sections_within_a_book_are_not_collections(self):
         # 03-bones is a section of the book, so the book still wins
         self.assertEqual(
-            tagging.collection_from_folder("bbcf-2026-2027/03-bones/tune.pdf", "data/in"),
+            tagging.collection_from_folder("bbcf-2026-2027/03-bones/tune.pdf"),
             "bbcf-2026-2027",
         )
 
-    def test_a_chart_loose_in_the_inbox_takes_the_inbox_name(self):
-        self.assertEqual(
-            tagging.collection_from_folder("tune.pdf", "/home/me/charts/quintet-2027"),
-            "quintet-2027",
-        )
-
-    def test_a_trailing_separator_does_not_produce_an_empty_name(self):
-        self.assertEqual(
-            tagging.collection_from_folder("tune.pdf", "/home/me/charts/quintet-2027/"),
-            "quintet-2027",
-        )
+    def test_a_chart_loose_in_the_input_folder_has_no_collection(self):
+        # the input folder is wherever the charts sit today, so it names nothing
+        self.assertEqual(tagging.collection_from_folder("tune.pdf"), "")
 
     def test_the_name_is_used_verbatim(self):
         # no guessing that 'bbcf' wants to be 'BBCF'; a manifest does that
         self.assertEqual(
-            tagging.collection_from_folder("bbcf_2026/tune.pdf", "data/in"),
+            tagging.collection_from_folder("bbcf_2026/tune.pdf"),
             "bbcf_2026",
         )
 
@@ -46,9 +38,10 @@ class CollectionReachesTheTags(unittest.TestCase):
         self.assertEqual(fields["Creator"], "bbcf-2026-2027")
         self.assertIn("bbcf-2026-2027", fields["Keywords"])
 
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_no_collection_leaves_the_tags_clean(self):
+        fields = tagging.fields("In The Mood", "Trombone 1")
+        self.assertEqual(fields["Creator"], "")
+        self.assertEqual(fields["Keywords"], "In The Mood, Trombone 1")
 
 
 class ManifestDiscovery(unittest.TestCase):
@@ -114,3 +107,16 @@ class ManifestDiscovery(unittest.TestCase):
     def test_a_book_without_a_manifest_is_not_an_error(self):
         self.assertEqual(self.manifests.discover("bbcf-2026-2027", "data/in"), "")
         self.assertEqual(self.manifests.load(""), ({}, self.manifests.Defaults()))
+
+    def test_loose_charts_still_find_a_manifest_beside_them(self):
+        self.write("charts/bandparts.yaml")
+        self.assertEqual(self.manifests.discover("", "charts"), "charts/bandparts.yaml")
+
+    def test_loose_charts_do_not_match_a_manifest_named_after_nothing(self):
+        # '' must not turn into 'manifests/.yaml' and pick up a stray file
+        self.write("manifests/.yaml")
+        self.assertEqual(self.manifests.discover("", "charts"), "")
+
+
+if __name__ == "__main__":
+    unittest.main()

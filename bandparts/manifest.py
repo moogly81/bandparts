@@ -50,9 +50,16 @@ def discover(book: str, folder: str) -> str:
     keeps manifests in git while the charts stay out of it, and a
     ``bandparts.yaml`` sitting with the charts themselves, for a book that
     travels as one folder.
+
+    Charts loose in the input folder have no book name to look up, so only the
+    second place applies to them.
     """
     for pattern in SEARCH:
-        candidate = pattern.format(book=book, folder=folder)
+        if not book and "{book}" in pattern:
+            continue
+        # normalised because a bookless chart makes 'folder' the input folder
+        # itself, and joining "" onto it leaves a trailing separator
+        candidate = os.path.normpath(pattern.format(book=book, folder=folder))
         if os.path.isfile(candidate):
             return candidate
     return ""
