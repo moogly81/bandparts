@@ -56,6 +56,16 @@ bin/bandparts --in ~/Dropbox/bbcf/charts --out ~/Dropbox/bbcf/parts
 | `--omr` | also run optical music recognition, writing a `.mxl` beside each part ([docs](musicxml.md)) |
 | `-n, --dry-run` | report only; scans are not OCR'd, so they report no parts |
 
+Every chart in the input folder is processed on every run, and parts already
+in the output folder are overwritten. There is no "skip what is done": a run
+is a fresh build of the book, which is what makes the manifest the only record
+of how the book was produced. It also means a second run with `--omr` costs
+the same hour as the first, so work on a handful of charts while tuning a
+manifest and run the whole book once at the end.
+
+The output folder may sit inside the input one; it is skipped when looking for
+charts, so a run never reads the parts an earlier run wrote.
+
 ## Adding a new book
 
 The repo is meant to accumulate books over the years, one folder per batch.

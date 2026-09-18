@@ -53,15 +53,27 @@ def plan(source: str, entry: manifests.Entry, languages: str, clean: bool, workd
     return readable, voices.group(detected)
 
 
-def find_charts(source: str) -> list[str]:
+def find_charts(source: str, destination: str = "") -> list[str]:
     """Every PDF under the input folder, as paths relative to it.
 
     Sub-folders are kept: 'bbcf-2026-2027/03.Bones/In The Mood.pdf' produces
     its parts under 'parts/bbcf-2026-2027/03.Bones/', so each book a band
     hands you stays separate without any extra flag.
+
+    The output folder is skipped when it sits inside the input one. Nesting
+    them is a reasonable thing to want - one folder holding a book and its
+    parts - but without this the second run reads the first run's parts as
+    charts, splits them again, and the pile grows every time.
     """
+    blocked = os.path.abspath(destination) if destination else ""
     found = []
-    for folder, _, filenames in os.walk(source):
+    for folder, subfolders, filenames in os.walk(source):
+        if blocked:
+            subfolders[:] = [
+                name
+                for name in subfolders
+                if os.path.abspath(os.path.join(folder, name)) != blocked
+            ]
         for filename in filenames:
             if filename.lower().endswith(".pdf") and not filename.startswith("."):
                 found.append(os.path.relpath(os.path.join(folder, filename), source))
@@ -108,7 +120,7 @@ def run(options: argparse.Namespace) -> int:
     if not os.path.isdir(options.source):
         sys.exit(f"no such folder: {options.source}/")
 
-    charts = find_charts(options.source)
+    charts = find_charts(options.source, options.destination)
     if not charts:
         sys.exit(f"no PDF found in {options.source}/")
 
