@@ -104,3 +104,58 @@ archives and plain `.xml` are read.
 
 Repairing those bars means deciding what the music actually is, so it is left
 to a musician: open the `.omr` in Audiveris, or the `.mxl` in MuseScore.
+
+## Measuring how good the recognition is
+
+Most of this collection is not scanned paper. Finale wrote it, so every
+notehead and articulation is a glyph from a music font at an exact position,
+and `pdftotext` gives them back as characters. The original is therefore
+machine-readable ground truth, and recognition can be scored against it with
+nobody labelling anything:
+
+```sh
+bin/omr-quality data/out
+```
+
+```
+part                                       noteheads      accent     marcato      tenuto
+Come Fly With Me - Trombone 1             195/226      26/23       58/58       21/1
+Moanin' - Jazzin - Trombone 3             177/132      27/15       26/13        2/0
+
+24 of 30 part(s) scored against their engraving, the rest scanned
+            engraved  recognised    kept   wrong
+noteheads       4018        3993     99%     11%
+tenuto           148          81     55%     61%
+```
+
+Read `wrong`, not `kept`. A part that drops thirty notes and a part that
+invents thirty average out to a perfect score, and above they very nearly do:
+noteheads look 99% right while 11% of them are in fact wrong. Recognition
+invents as readily as it drops, so both count as mistakes.
+
+Below the table it lists faults that need no ground truth at all: a part that
+produced no MusicXML, a missing title, bars that do not fill, and the credit
+clutter that makes a notation editor stack text on top of itself.
+
+To use it as a loop, keep the numbers from before your change:
+
+```sh
+bin/omr-quality data/out --json > before.json
+# change something: a rendering resolution, an Audiveris option, a patch
+bin/omr-quality data/out --baseline before.json
+```
+
+```
+against before.json:
+  tenuto       120 ->    91 wrong  (better)
+```
+
+Two things are deliberately not scored. Rests, because one engraved
+multi-measure rest becomes many rests in MusicXML, which scored 234% and meant
+nothing. And staccato, because its glyph is a dot and so is an augmentation
+dot: `. œ J œ` is a dotted rhythm, not an articulation, and counting them
+together claimed 37 staccatos in a part whose engraving has none. Telling
+those apart needs the dot's position, which extracted text does not carry.
+
+Scanned charts have no glyphs to read, so they are reported as unscorable
+rather than as scoring zero. The fault checks still apply to them.

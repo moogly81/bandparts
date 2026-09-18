@@ -53,7 +53,7 @@ install `qpdf`, `poppler`, `ocrmypdf` and `exiftool` yourself - see
 | --- | --- |
 | **[Install](docs/install.md)** | Docker, Nix or by hand, alternatives to Docker Desktop, and why the three paths do not give identical tools |
 | **[Usage](docs/usage.md)** | every option, adding a new book, and manifests for the charts that need help |
-| **[MusicXML](docs/musicxml.md)** | optional optical music recognition, repairing the header it produces, and checking a score an editor calls corrupt |
+| **[MusicXML](docs/musicxml.md)** | optional optical music recognition, repairing the header it produces, checking a score an editor calls corrupt, and scoring the recognition against the engraving it came from |
 | **[Contributing](CONTRIBUTING.md)** | how to report a chart that is not recognised, and what makes a good patch |
 | **[AGENTS.md](AGENTS.md)** | the brief to hand an AI assistant working on this repo |
 

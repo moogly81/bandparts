@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Run without installing, from wherever you happen to be.
+set -euo pipefail
+repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PYTHONPATH="$repo${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m bandparts.qualitycli "$@"
