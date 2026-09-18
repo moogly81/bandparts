@@ -75,6 +75,30 @@ lost every multi-bar rest count and left six bars that do not add up. Text
 quality and note quality are separate problems, and only the first has an easy
 answer.
 
+### What the repair does to the text on the page
+
+An editor prints the `<credit>` text, not `<work-title>`, so a title fixed
+only in `<work>` still shows the misreading. One scanned part came back
+titled **EN THE MOOD**, its part name filed as lyricist and reading
+**TROMBONE T**, and composer and arranger printed on top of one another.
+
+So credits are matched by likeness rather than equality, and corrected where
+they are wrong:
+
+- **EN THE MOOD** becomes *In The Mood*, **TROMBONE T** becomes *Trombone 1*.
+- **By JOE GARLAND** is left exactly as it is. It already holds the name and
+  is what the engraver wrote; replacing it with *Joe Garland* would lose a
+  word.
+- Text that matches nothing we know, like *Vamp Till Vocal*, is never touched.
+
+Bar numbers that recognition promoted to page text are dropped. They are the
+bulk of the clutter - one part carried 42 credits, of which 41 were numbers
+like `55` and `,55` - and each one prints at the coordinates it was read
+from, which is on top of the staff. An editor numbers bars itself.
+
+Positions are never changed. The layout came from the engraving and is what
+makes the result resemble the original.
+
 ## Checking a score
 
 If a notation editor calls a file "corrupted" without saying where, this says
@@ -134,8 +158,16 @@ noteheads look 99% right while 11% of them are in fact wrong. Recognition
 invents as readily as it drops, so both count as mistakes.
 
 Below the table it lists faults that need no ground truth at all: a part that
-produced no MusicXML, a missing title, bars that do not fill, and the credit
-clutter that makes a notation editor stack text on top of itself.
+produced no MusicXML, a missing title, bars that do not fill, the credit
+clutter that makes a notation editor stack text on top of itself, and a part
+whose length disagrees with the other voices of the same tune.
+
+That last one is worth explaining, because the obvious version of it does not
+work. The voices of one arrangement play the same number of bars, so the
+majority is a reference: a part at 158 measures where the others have 80 has
+been misread. Comparing instead against the bar numbers printed on the page
+sounds better and is useless - some engravings number every bar and others
+number every system, so it flagged twenty parts of twenty-four.
 
 To use it as a loop, keep the numbers from before your change:
 

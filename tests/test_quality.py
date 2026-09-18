@@ -160,3 +160,78 @@ class ExaminingAPart(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LengthOutliers(unittest.TestCase):
+    """The voices of one arrangement play the same number of bars.
+
+    That makes the majority a reference needing no ground truth, and it is
+    the only reliable one: an earlier version compared each part against the
+    bar numbers printed on its page, which flagged twenty parts of
+    twenty-four, because some engravings number every bar and others number
+    every system.
+    """
+
+    def parts(self, lengths: dict[str, int]) -> list[quality.Part]:
+        made = []
+        for name, measures in lengths.items():
+            part = quality.Part(name=name, pdf=Path(f"{name}.pdf"))
+            part.measures = measures
+            made.append(part)
+        quality.outliers(made)
+        return made
+
+    def flagged(self, parts) -> list[str]:
+        return [p.name for p in parts if any(f.kind == "length" for f in p.faults)]
+
+    def test_a_part_twice_its_siblings_is_flagged(self):
+        parts = self.parts(
+            {
+                "In The Mood - Trombone 1": 79,
+                "In The Mood - Trombone 2": 80,
+                "In The Mood - Trombone 3": 80,
+                "In The Mood - Trombone 4": 158,
+            }
+        )
+        self.assertEqual(self.flagged(parts), ["In The Mood - Trombone 4"])
+
+    def test_ordinary_variation_is_not_flagged(self):
+        parts = self.parts(
+            {
+                "Moanin' - Trombone 1": 78,
+                "Moanin' - Trombone 2": 80,
+                "Moanin' - Trombone 3": 76,
+                "Moanin' - Bass Trombone": 78,
+            }
+        )
+        self.assertEqual(self.flagged(parts), [])
+
+    def test_a_part_far_shorter_is_flagged_too(self):
+        # recognition giving up half way is as wrong as reading twice
+        parts = self.parts(
+            {
+                "Blues - Trombone 1": 68,
+                "Blues - Trombone 2": 69,
+                "Blues - Trombone 3": 69,
+                "Blues - Bass Trombone": 20,
+            }
+        )
+        self.assertEqual(self.flagged(parts), ["Blues - Bass Trombone"])
+
+    def test_tunes_are_judged_separately(self):
+        parts = self.parts(
+            {
+                "Short Tune - Trombone 1": 30,
+                "Short Tune - Trombone 2": 30,
+                "Short Tune - Trombone 3": 30,
+                "Long Tune - Trombone 1": 120,
+                "Long Tune - Trombone 2": 120,
+                "Long Tune - Trombone 3": 120,
+            }
+        )
+        self.assertEqual(self.flagged(parts), [])
+
+    def test_too_few_voices_to_judge(self):
+        # one part of a tune has no majority to disagree with
+        parts = self.parts({"Solo Tune - Trombone 1": 300})
+        self.assertEqual(self.flagged(parts), [])

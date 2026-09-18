@@ -61,7 +61,8 @@ def main(argv: list[str] | None = None) -> int:
     print(
         "  rewrote  : "
         f"{changed['work']} title field(s), {changed['creators']} creator(s), "
-        f"{changed['parts']} part name(s), {changed['credits']} credit(s) labelled"
+        f"{changed['parts']} part name(s), {changed['credits']} credit(s) labelled, "
+        f"{changed['corrected']} corrected, {changed['dropped']} bar number(s) dropped"
     )
     return 0
 

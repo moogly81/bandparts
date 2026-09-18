@@ -25,6 +25,7 @@ rather than as scoring zero, and the structural checks still apply to them.
 
 from __future__ import annotations
 
+import re
 import subprocess
 import xml.etree.ElementTree as ET
 from collections import Counter
@@ -113,6 +114,15 @@ def engraved(pdf: Path) -> Inventory | None:
     return inventory if inventory.noteheads >= ENGRAVED_MINIMUM else None
 
 
+#: A part far longer or shorter than the other voices of the same tune is
+#: broken: they play the same number of bars. Slack for a part that genuinely
+#: differs, and for multi-bar rests collapsing differently.
+OUTLIER = 1.4
+
+#: Fewer voices than this and there is no majority to be an outlier from.
+SIBLINGS = 3
+
+
 def recognised(root: ET.Element) -> Inventory:
     """What the MusicXML claims, counted the same way."""
     notes = root.findall(".//note")
@@ -149,6 +159,7 @@ class Part:
     name: str
     pdf: Path
     score: Path | None = None
+    measures: int = 0
     source: Inventory | None = None
     result: Inventory | None = None
     faults: list[Fault] = field(default_factory=list)
@@ -218,6 +229,8 @@ def examine(pdf: Path) -> Part:
             part.faults.append(
                 Fault("credit clutter", f"{credits} page-level credits in {path.name}")
             )
+        part.measures += len(root.findall(".//measure"))
+
         bad = musicxml.check_durations(root)
         if bad:
             part.faults.append(
@@ -227,6 +240,48 @@ def examine(pdf: Path) -> Part:
     return part
 
 
+def _tune(name: str) -> str:
+    """The tune a part belongs to: "Moanin' - Trombone 2" is Moanin'."""
+    return name.rsplit(" - ", 1)[0] if " - " in name else name
+
+
+def outliers(parts: list[Part]) -> None:
+    """Flag any part whose length disagrees with the other voices of its tune.
+
+    This needs no ground truth at all: the voices of one arrangement play the
+    same number of bars, so the majority is the reference and a part at twice
+    their length has been misread. It replaces an earlier check that compared
+    against the bar numbers printed on the page, which flagged twenty parts
+    of twenty-four because engravings number every system rather than every
+    bar, and comparing against a number that means different things on
+    different charts is not a check.
+    """
+    tunes: dict[str, list[Part]] = {}
+    for part in parts:
+        if part.measures:
+            tunes.setdefault(_tune(part.name), []).append(part)
+
+    for tune, voices in tunes.items():
+        if len(voices) < SIBLINGS:
+            continue
+        lengths = sorted(voice.measures for voice in voices)
+        median = lengths[len(lengths) // 2]
+        if not median:
+            continue
+        for voice in voices:
+            ratio = voice.measures / median
+            if ratio > OUTLIER or ratio < 1 / OUTLIER:
+                voice.faults.append(
+                    Fault(
+                        "length",
+                        f"{voice.measures} measures where the other voices of "
+                        f"{tune} have about {median}",
+                    )
+                )
+
+
 def survey(folder: Path) -> list[Part]:
     """Score every part in a folder, recursively."""
-    return [examine(pdf) for pdf in sorted(folder.rglob("*.pdf"))]
+    parts = [examine(pdf) for pdf in sorted(folder.rglob("*.pdf"))]
+    outliers(parts)
+    return parts

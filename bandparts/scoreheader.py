@@ -19,6 +19,7 @@ import re
 import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 from pathlib import Path
 
 from .musicxml import read_score
@@ -52,23 +53,46 @@ def _normalise(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", (text or "").lower())
 
 
+#: How alike two lines must be to count as the same one misread. "EN THE
+#: MOOD" against "In The Mood" scores 0.89; unrelated lines score far lower.
+LIKENESS = 0.8
+
+
+def _alike(text: str, known: str) -> bool:
+    """Is this the known line, read badly?"""
+    if not known:
+        return False
+    return SequenceMatcher(None, _normalise(text), _normalise(known)).ratio() >= LIKENESS
+
+
+#: Credits holding nothing but digits and punctuation: bar numbers that
+#: recognition promoted to page text. They carry no information an editor
+#: cannot regenerate, and they sit at the coordinates they were read from,
+#: which is on top of the music.
+NOISE = re.compile(r"^[\d\s,.;:'\u2019\-=_|/\\()]+$")
+
+
 def _role_of(text: str, header: Header) -> str | None:
     """Which credit a line of recognised text is, or None to leave it alone.
 
     Page numbers, rehearsal marks and bar counts are the bulk of the text on
     a part and must keep their positions untouched, so anything unrecognised
     is left exactly as it was.
+
+    Matching is by likeness rather than equality, because the text being
+    matched came from OCR: an exact comparison fails on precisely the lines
+    most worth correcting.
     """
     value = _normalise(text)
     if not value:
         return None
-    if header.title and value == _normalise(header.title):
+    if header.title and _alike(text, header.title):
         return "title"
-    if header.part and value == _normalise(header.part):
+    if header.part and _alike(text, header.part):
         return "part name"
-    if header.arranger and _normalise(header.arranger) in value:
+    if header.arranger and (_normalise(header.arranger) in value or _alike(text, header.arranger)):
         return "arranger"
-    if header.composer and _normalise(header.composer) in value:
+    if header.composer and (_normalise(header.composer) in value or _alike(text, header.composer)):
         return "composer"
     if re.search(r"copyright|©|\ball rights\b", text, re.I):
         return "rights"
@@ -77,7 +101,14 @@ def _role_of(text: str, header: Header) -> str | None:
 
 def apply(root: ET.Element, header: Header) -> dict[str, int]:
     """Rewrite the header of a parsed score in place. Returns what changed."""
-    changed = {"work": 0, "creators": 0, "parts": 0, "credits": 0}
+    changed = {
+        "work": 0,
+        "creators": 0,
+        "parts": 0,
+        "credits": 0,
+        "corrected": 0,
+        "dropped": 0,
+    }
 
     work = root.find("work")
     if work is None:
@@ -134,23 +165,44 @@ def apply(root: ET.Element, header: Header) -> dict[str, int]:
                 score_part.insert(list(score_part).index(name) + 1, abbreviation)
             abbreviation.text = _abbreviate(header.part)
 
-    # Label the words already on the page rather than adding new ones, so the
-    # layout stays as it was engraved and an editor still knows what is what.
-    for credit in root.findall("credit"):
+    # Label the words already on the page, and correct the ones we know the
+    # true reading of. Editors display the credit, not the work title, so a
+    # title fixed only in <work> still prints "EN THE MOOD" on the page.
+    # Positions are left alone: they came from the engraving and are what
+    # make the result resemble the original.
+    truth = {
+        "title": header.title,
+        "part name": header.part,
+        "composer": header.composer,
+        "arranger": header.arranger,
+    }
+    for credit in list(root.findall("credit")):
         words = credit.find("credit-words")
         if words is None or not (words.text or "").strip():
             continue
         role = _role_of(words.text, header)
         if role is None:
+            # Bar numbers read as page text, dropped rather than left to
+            # print on top of the staff they were read from.
+            if NOISE.match(words.text.strip()) and credit.find("credit-type") is None:
+                root.remove(credit)
+                changed["dropped"] += 1
             continue
         existing = credit.find("credit-type")
-        if existing is not None and existing.text == role:
-            continue
         if existing is None:
             existing = ET.Element("credit-type")
             credit.insert(0, existing)
-        existing.text = role
-        changed["credits"] += 1
+        if existing.text != role:
+            existing.text = role
+            changed["credits"] += 1
+        correct = truth.get(role, "")
+        # Only rewrite what was misread. "Arranged by Eyal Vilner" already
+        # holds the name and is what the page says, so replacing it with
+        # "Eyal Vilner" would lose a word the engraver put there; "EN THE
+        # MOOD" holds nothing and has to go.
+        if correct and _normalise(correct) not in _normalise(words.text):
+            words.text = correct
+            changed["corrected"] += 1
         if role == "rights" and not header.rights:
             header.rights = words.text.strip()
 
