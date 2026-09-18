@@ -1,7 +1,15 @@
 # Charts and generated parts stay out of git: they are copyrighted material.
-# One rule over the whole tree rather than a rule per folder, because the
-# cost of getting this wrong is publishing someone else's score.
-data/
+# The two folders themselves are tracked, by an empty .gitkeep each, so that a
+# fresh clone has somewhere to put charts. Everything else under data/ is
+# ignored, including any folder nested inside in/ or out/, because the cost of
+# getting this wrong is publishing someone else's score.
+data/*
+!data/in
+!data/out
+data/in/*
+data/out/*
+!data/in/.gitkeep
+!data/out/.gitkeep
 
 __pycache__/
 *.py[cod]

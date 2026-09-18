@@ -71,9 +71,10 @@ flake.nix, .envrc   pinned toolchain: dev shell, package and published image
 scripts/            build the image locally, including on macOS
 ```
 
-Scores are copyrighted, so the whole of `data/` is kept out of git by a single
-rule, and out of the Docker build context. Only the tooling is versioned.
-Those two folders are defaults, not requirements: `--in` and `--out` take any
+Scores are copyrighted, so everything you put under `data/` is kept out of git
+and out of the Docker build context; the two folders themselves are tracked
+empty, so a fresh clone has somewhere to put charts. Only the tooling is
+versioned. They are defaults, not requirements: `--in` and `--out` take any
 path, so nothing need live in the checkout.
 
 ## Known limits

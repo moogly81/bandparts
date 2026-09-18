@@ -19,11 +19,14 @@ tool call usually removes the feature.
 ## Never commit music
 
 `data/` holds copyrighted scores: `data/in` going in, `data/out` coming
-out. A single `.gitignore` rule covers the whole tree, and the image is built
-by Nix from the flake, which copies only what the flake names. Both must stay
-that way, and the rule must stay a single one: a rule per folder is easy to
-get subtly wrong, and the cost is publishing someone else's score.
+out. One block of `.gitignore` rules covers the whole tree, tracking the two
+folders as empty markers and nothing else, and the image is built by Nix from
+the flake, which copies only what the flake names. Both must stay that way,
+and the rules must stay in one block: a rule per folder is easy to get subtly
+wrong, and the cost is publishing someone else's score.
 
+- The exception list is `data/in/.gitkeep` and `data/out/.gitkeep`, both
+  empty. Adding anything else to it is how a chart gets committed.
 - Do not add a chart, part, or excerpt as a test fixture. Tests build their
   own PDFs and MusicXML from scratch; follow that pattern.
 - Do not paste page text from a real chart into an issue, commit message or
