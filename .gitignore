@@ -11,3 +11,7 @@ result
 
 # scratch space for scripts/build-image
 .image-build/
+
+# direnv's cache: symlinks into this machine's /nix/store, meaningless
+# anywhere else and dangling in a fresh clone
+.direnv/
