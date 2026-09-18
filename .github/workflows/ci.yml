@@ -292,6 +292,46 @@ jobs:
               "$registry:$SHA-amd64" "$registry:$SHA-arm64"
           done <<< "$TAGS"
 
+      # The per-architecture tags exist only so that this job can join them.
+      # Left behind they double the tag list on a public page and imply they
+      # are something anyone should pull.
+      - name: Remove the staging tags
+        env:
+          USERNAME: ${{ vars.DOCKERHUB_USERNAME || github.repository_owner }}
+          TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.sha }}
+          HAVE_HUB: ${{ steps.hub.outputs.have }}
+        run: |
+          set -euo pipefail
+
+          if [ "$HAVE_HUB" = "true" ]; then
+            jwt=$(curl -sS -X POST https://hub.docker.com/v2/users/login \
+              -H "Content-Type: application/json" \
+              -d "{\"username\":\"$USERNAME\",\"password\":\"$TOKEN\"}" \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+            for arch in amd64 arm64; do
+              curl -sS -X DELETE -H "Authorization: JWT $jwt" \
+                "https://hub.docker.com/v2/repositories/$IMAGE/tags/$SHA-$arch/" \
+                -o /dev/null -w "docker hub %{http_code} $SHA-$arch\n"
+            done
+          fi
+
+          # GHCR keeps them as untagged versions rather than deleting the
+          # blobs, and the token may not be allowed to remove versions at
+          # all, so a failure here is reported and ignored.
+          for arch in amd64 arm64; do
+            digest=$(curl -sS -H "Authorization: Bearer $(printf %s "$GH_TOKEN" | base64)" \
+              -H "Accept: application/vnd.oci.image.index.v1+json" \
+              -I "https://ghcr.io/v2/${{ github.repository }}/manifests/$SHA-$arch" \
+              | tr -d '\r' | awk -F': ' '/[Dd]ocker-[Cc]ontent-[Dd]igest/ {print $2}' || true)
+            if [ -n "$digest" ]; then
+              curl -sS -X DELETE -H "Authorization: Bearer $(printf %s "$GH_TOKEN" | base64)" \
+                "https://ghcr.io/v2/${{ github.repository }}/manifests/$digest" \
+                -o /dev/null -w "ghcr %{http_code} $SHA-$arch\n" || true
+            fi
+          done
+
       - name: Description
         if: steps.hub.outputs.have == 'true'
         uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
