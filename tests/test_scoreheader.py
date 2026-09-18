@@ -193,3 +193,61 @@ class MisreadCredits(unittest.TestCase):
             [c.findtext("credit-words") for c in root.findall("credit")],
             ["Medium Swing"],
         )
+
+
+class StackedCredits(unittest.TestCase):
+    """Composer over arranger is one block of two lines, not two credits.
+
+    Their coordinates are right, but editors ignore them and put both in the
+    same corner, printing one over the other.
+    """
+
+    def score(self, composer_y: str, arranger_y: str) -> ET.Element:
+        return ET.fromstring(
+            f"""<score-partwise version="4.0">
+              <credit page="1"><credit-words default-x="953" default-y="{composer_y}">By JOE GARLAND</credit-words></credit>
+              <credit page="1"><credit-words default-x="823" default-y="{arranger_y}">Arranged by MICHAEL SWEENEY</credit-words></credit>
+              <part-list><score-part id="P1"><part-name>V</part-name></score-part></part-list>
+              <part id="P1"><measure number="1"/></part>
+            </score-partwise>"""
+        )
+
+    HEADER = Header(
+        title="In The Mood",
+        part="Trombone 1",
+        composer="Joe Garland",
+        arranger="Michael Sweeney",
+    )
+
+    def test_the_two_become_one_credit_of_two_lines(self):
+        root = self.score("1490", "1465")
+        changed = apply(root, self.HEADER)
+        self.assertEqual(changed["merged"], 1)
+        self.assertEqual(len(root.findall("credit")), 1)
+        self.assertEqual(
+            root.findtext("credit/credit-words"),
+            "By JOE GARLAND\nArranged by MICHAEL SWEENEY",
+        )
+
+    def test_the_upper_line_comes_first(self):
+        # whichever is engraved higher leads, whatever order the credits
+        # happen to appear in the file
+        root = self.score("1465", "1550")
+        apply(root, self.HEADER)
+        self.assertTrue(
+            root.findtext("credit/credit-words").startswith("Arranged by")
+        )
+
+    def test_the_surviving_credit_keeps_its_position(self):
+        root = self.score("1490", "1465")
+        apply(root, self.HEADER)
+        words = root.find("credit/credit-words")
+        self.assertEqual(words.get("default-y"), "1490")
+        self.assertEqual(words.get("default-x"), "953")
+
+    def test_credits_far_apart_are_left_alone(self):
+        # a composer at the top and an arranger at the foot are not a block
+        root = self.score("1490", "200")
+        changed = apply(root, self.HEADER)
+        self.assertEqual(changed["merged"], 0)
+        self.assertEqual(len(root.findall("credit")), 2)

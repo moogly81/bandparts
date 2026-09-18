@@ -17,12 +17,11 @@ from __future__ import annotations
 
 import re
 import xml.etree.ElementTree as ET
-import zipfile
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from pathlib import Path
 
-from .musicxml import read_score
+from .musicxml import read_score, write_score
 
 
 @dataclass
@@ -99,6 +98,44 @@ def _role_of(text: str, header: Header) -> str | None:
     return None
 
 
+#: How far apart, vertically, two credits can be and still be one stacked
+#: block of text. A line of a part's header is about 25 tenths high.
+STACKED = 120
+
+
+def _merge_stacked(root: ET.Element) -> int:
+    """Join the composer and arranger into one block of two lines.
+
+    Engravers stack them at the top right, and the coordinates recognition
+    reads are right. Editors ignore those coordinates and place both credits
+    in the same corner slot, so the two print on top of one another: "By JOE
+    GARLANDArranged by MICHAEL SWEENEY". One credit holding two lines is what
+    the page shows, and every renderer agrees about it.
+    """
+    found = {}
+    for credit in root.findall("credit"):
+        role = credit.findtext("credit-type")
+        if role in ("composer", "arranger") and credit.find("credit-words") is not None:
+            found[role] = credit
+    if len(found) != 2:
+        return 0
+
+    def height(credit: ET.Element) -> float:
+        return float(credit.find("credit-words").get("default-y") or 0)
+
+    upper, lower = sorted(found.values(), key=height, reverse=True)
+    if abs(height(upper) - height(lower)) > STACKED:
+        return 0
+    if upper.get("page") != lower.get("page"):
+        return 0
+
+    upper_words = upper.find("credit-words")
+    lower_words = lower.find("credit-words")
+    upper_words.text = f"{upper_words.text}\n{lower_words.text}"
+    root.remove(lower)
+    return 1
+
+
 def apply(root: ET.Element, header: Header) -> dict[str, int]:
     """Rewrite the header of a parsed score in place. Returns what changed."""
     changed = {
@@ -108,6 +145,7 @@ def apply(root: ET.Element, header: Header) -> dict[str, int]:
         "credits": 0,
         "corrected": 0,
         "dropped": 0,
+        "merged": 0,
     }
 
     work = root.find("work")
@@ -206,6 +244,7 @@ def apply(root: ET.Element, header: Header) -> dict[str, int]:
         if role == "rights" and not header.rights:
             header.rights = words.text.strip()
 
+    changed["merged"] = _merge_stacked(root)
     return changed
 
 
@@ -229,22 +268,5 @@ def rewrite(path: Path, header: Header) -> dict[str, int]:
     """Apply the header to a score file, preserving the .mxl container."""
     root = read_score(path)
     changed = apply(root, header)
-    payload = ET.tostring(root, encoding="UTF-8", xml_declaration=True)
-
-    if path.suffix.lower() != ".mxl":
-        path.write_bytes(payload)
-        return changed
-
-    with zipfile.ZipFile(path) as archive:
-        entries = [(item, archive.read(item.filename)) for item in archive.infolist()]
-    score_name = None
-    for item, data in entries:
-        if item.filename.startswith("META-INF/"):
-            continue
-        if item.filename.lower().endswith((".xml", ".musicxml")):
-            score_name = item.filename
-            break
-    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
-        for item, data in entries:
-            archive.writestr(item, payload if item.filename == score_name else data)
+    write_score(path, root)
     return changed

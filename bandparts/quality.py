@@ -231,6 +231,13 @@ def examine(pdf: Path) -> Part:
             )
         part.measures += len(root.findall(".//measure"))
 
+        # A part with no key signature anywhere is not repairable after the
+        # fact: its notes were read as naturals, so stamping a key on top
+        # would display flats over notes that are not flat. It has to be
+        # corrected where it was read, so it is reported rather than fixed.
+        if root.find(".//key") is None:
+            part.faults.append(Fault("no key", f"no key signature in {path.name}"))
+
         bad = musicxml.check_durations(root)
         if bad:
             part.faults.append(

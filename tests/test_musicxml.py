@@ -12,6 +12,7 @@ import zipfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from bandparts import musicxml
 from bandparts.musicxml import check_durations, read_score
 
 
@@ -110,3 +111,95 @@ class ReadScore(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def bars(*contents: str) -> ET.Element:
+    """A one-part score whose measures hold whatever is passed in."""
+    measures = "".join(
+        f"<measure number='{i + 1}'>{c}</measure>" for i, c in enumerate(contents)
+    )
+    return ET.fromstring(
+        "<score-partwise version='4.0'>"
+        "<part-list><score-part id='P1'><part-name>Tbn</part-name></score-part>"
+        f"</part-list><part id='P1'>{measures}</part></score-partwise>"
+    )
+
+
+WHOLE_REST = "<note><rest/><duration>4</duration><type>whole</type></note>"
+HALF_RESTS = "<note><rest/><duration>2</duration></note>" * 2
+PLAYED = "<note><pitch><step>B</step><octave>3</octave></pitch><duration>4</duration></note>"
+
+
+class CollapsingRests(unittest.TestCase):
+    """A six-bar rest is written as one bar with a 6 over it, not six bars.
+
+    Both say the same thing, but a player counting bars on a stand reads the
+    number, and the part is meant to look like the one it came from.
+    """
+
+    def counts(self, root) -> list[str]:
+        return [m.text for m in root.findall(".//multiple-rest")]
+
+    def test_a_run_of_empty_bars_becomes_one(self):
+        root = bars(PLAYED, WHOLE_REST, WHOLE_REST, WHOLE_REST, PLAYED)
+        self.assertEqual(musicxml.collapse_rests(root), 1)
+        self.assertEqual(self.counts(root), ["3"])
+
+    def test_a_bar_written_as_two_half_rests_is_still_empty(self):
+        # recognition writes the same silence differently from part to part
+        root = bars(PLAYED, WHOLE_REST, HALF_RESTS, PLAYED)
+        musicxml.collapse_rests(root)
+        self.assertEqual(self.counts(root), ["2"])
+
+    def test_a_single_empty_bar_is_left_alone(self):
+        root = bars(PLAYED, WHOLE_REST, PLAYED)
+        self.assertEqual(musicxml.collapse_rests(root), 0)
+        self.assertEqual(self.counts(root), [])
+
+    def test_a_repeat_inside_a_run_stops_it(self):
+        # collapsing across a repeat would hide the repeat
+        root = bars(
+            WHOLE_REST,
+            "<barline location='right'><repeat direction='backward'/></barline>"
+            + WHOLE_REST,
+            WHOLE_REST,
+        )
+        musicxml.collapse_rests(root)
+        self.assertEqual(self.counts(root), [])
+
+    def test_a_direction_inside_a_run_stops_it(self):
+        # a tempo change or dynamic in an empty bar still has to be read
+        root = bars(
+            WHOLE_REST,
+            "<direction><direction-type><words>Solo</words></direction-type></direction>"
+            + WHOLE_REST,
+            WHOLE_REST,
+        )
+        musicxml.collapse_rests(root)
+        self.assertEqual(self.counts(root), [])
+
+    def test_a_key_change_inside_a_run_stops_it(self):
+        root = bars(
+            WHOLE_REST,
+            "<attributes><key><fifths>-2</fifths></key></attributes>" + WHOLE_REST,
+            WHOLE_REST,
+        )
+        musicxml.collapse_rests(root)
+        self.assertEqual(self.counts(root), [])
+
+    def test_bars_with_notes_are_never_collapsed(self):
+        root = bars(WHOLE_REST, PLAYED, WHOLE_REST)
+        self.assertEqual(musicxml.collapse_rests(root), 0)
+
+    def test_two_runs_are_collapsed_separately(self):
+        root = bars(WHOLE_REST, WHOLE_REST, PLAYED, WHOLE_REST, WHOLE_REST, WHOLE_REST)
+        self.assertEqual(musicxml.collapse_rests(root), 2)
+        self.assertEqual(self.counts(root), ["2", "3"])
+
+    def test_collapsing_does_not_change_the_music(self):
+        # the bars stay; only how they are displayed changes
+        root = bars(PLAYED, WHOLE_REST, WHOLE_REST, PLAYED)
+        before = len(root.findall(".//measure")), len(root.findall(".//note"))
+        musicxml.collapse_rests(root)
+        after = len(root.findall(".//measure")), len(root.findall(".//note"))
+        self.assertEqual(before, after)

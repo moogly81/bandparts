@@ -107,10 +107,18 @@ def transcribe(part: str, title: str, voice: str, composer: str, arranger: str) 
     header = scoreheader.Header(
         title=title, part=voice, composer=composer, arranger=arranger
     )
-    scoreheader.rewrite(produced, header)
+    root = musicxml.read_score(produced)
+    scoreheader.apply(root, header)
+    rests = musicxml.collapse_rests(root)
+    musicxml.write_score(produced, root)
 
-    problems = musicxml.check_durations(musicxml.read_score(produced))
-    suffix = f", {len(problems)} bar(s) need repair" if problems else ""
+    problems = musicxml.check_durations(root)
+    notes = []
+    if rests:
+        notes.append(f"{rests} multi-bar rest(s)")
+    if problems:
+        notes.append(f"{len(problems)} bar(s) need repair")
+    suffix = f", {', '.join(notes)}" if notes else ""
     return f"{os.path.basename(produced)}{suffix}"
 
 

@@ -62,7 +62,8 @@ def main(argv: list[str] | None = None) -> int:
         "  rewrote  : "
         f"{changed['work']} title field(s), {changed['creators']} creator(s), "
         f"{changed['parts']} part name(s), {changed['credits']} credit(s) labelled, "
-        f"{changed['corrected']} corrected, {changed['dropped']} bar number(s) dropped"
+        f"{changed['corrected']} corrected, {changed['dropped']} bar number(s) "
+        f"dropped, {changed['merged']} credit block(s) joined"
     )
     return 0
 

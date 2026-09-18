@@ -73,6 +73,95 @@ def read_score(path: Path) -> ET.Element:
         return ET.fromstring(archive.read(name))
 
 
+def write_score(path: Path, root: ET.Element) -> None:
+    """Write a score back, preserving the zip container of a .mxl."""
+    payload = ET.tostring(root, encoding="UTF-8", xml_declaration=True)
+    if path.suffix.lower() != ".mxl":
+        path.write_bytes(payload)
+        return
+
+    with zipfile.ZipFile(path) as archive:
+        entries = [(item, archive.read(item.filename)) for item in archive.infolist()]
+    score_name = None
+    for item, _ in entries:
+        if item.filename.startswith("META-INF/"):
+            continue
+        if item.filename.lower().endswith((".xml", ".musicxml")):
+            score_name = item.filename
+            break
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+        for item, data in entries:
+            archive.writestr(item, payload if item.filename == score_name else data)
+
+
+#: A rest standing in for this many bars or more is written as one, with the
+#: count above it. Two is where engravers start, and where the page stops
+#: matching the score if we do not.
+REST_RUN = 2
+
+#: Anything of these inside a run of empty bars means the bars are not
+#: interchangeable, and collapsing them would hide it: a repeat, an ending, a
+#: rehearsal mark, a dynamic, a tempo change.
+NOT_EMPTY = ("barline", "direction", "harmony", "sound")
+
+
+def _is_empty_bar(measure: ET.Element) -> bool:
+    """A bar holding only rests, and nothing that must stay visible."""
+    if any(measure.find(tag) is not None for tag in NOT_EMPTY):
+        return False
+    notes = measure.findall("note")
+    # Every note a rest, however the bar was written: recognition reports a
+    # silent bar as one whole rest on one part and as two half rests on the
+    # next, and both are equally empty.
+    if not notes or any(note.find("rest") is None for note in notes):
+        return False
+    attributes = measure.find("attributes")
+    if attributes is not None and (
+        attributes.find("key") is not None or attributes.find("time") is not None
+    ):
+        return False
+    return True
+
+
+def collapse_rests(root: ET.Element) -> int:
+    """Write runs of empty bars as multi-bar rests, the way the page does.
+
+    Recognition reports a six-bar rest as six empty bars. Both are the same
+    music, but only one of them looks like the part it came from, and a
+    player counting bars on a stand reads the number above the rest.
+
+    Returns the number of runs collapsed.
+    """
+    collapsed = 0
+    for part in root.findall("part"):
+        measures = part.findall("measure")
+        start = 0
+        while start < len(measures):
+            if not _is_empty_bar(measures[start]):
+                start += 1
+                continue
+            end = start
+            while end + 1 < len(measures) and _is_empty_bar(measures[end + 1]):
+                end += 1
+            length = end - start + 1
+            if length >= REST_RUN:
+                first = measures[start]
+                attributes = first.find("attributes")
+                if attributes is None:
+                    attributes = ET.Element("attributes")
+                    first.insert(0, attributes)
+                style = attributes.find("measure-style")
+                if style is None:
+                    style = ET.SubElement(attributes, "measure-style")
+                multiple = style.find("multiple-rest")
+                if multiple is None:
+                    multiple = ET.SubElement(style, "multiple-rest")
+                multiple.text = str(length)
+                collapsed += 1
+            start = end + 1
+    return collapsed
+
+
 def check_durations(root: ET.Element) -> list[BadMeasure]:
     """Return every measure whose notes do not add up to its time signature.
 

@@ -96,8 +96,35 @@ bulk of the clutter - one part carried 42 credits, of which 41 were numbers
 like `55` and `,55` - and each one prints at the coordinates it was read
 from, which is on top of the staff. An editor numbers bars itself.
 
-Positions are never changed. The layout came from the engraving and is what
-makes the result resemble the original.
+Composer and arranger are joined into one block of two lines. Their
+coordinates are right - the engraver stacks them at the top right - but
+editors ignore those coordinates and put both credits in the same corner
+slot, printing `By JOE GARLANDArranged by MICHAEL SWEENEY`. One credit
+holding two lines is what the page shows, and every renderer agrees about it.
+
+Otherwise positions are never changed. The layout came from the engraving and
+is what makes the result resemble the original.
+
+### Multi-bar rests
+
+Recognition reports a six-bar rest as six empty bars. Both are the same
+music, but only one of them looks like the part it came from, and a player
+counting bars on a stand reads the number above the rest. Runs of empty bars
+are written back as one, and the run stops at anything that has to stay
+visible: a repeat, an ending, a dynamic, a tempo mark, a key or time change.
+
+### What is not repaired
+
+A part recognised without a key signature is reported, not fixed. Its notes
+were read as naturals - one scanned part has 51 B naturals against 11 B
+flats - so stamping two flats on top would display a key the notes contradict
+and would look repaired while reading wrong. The key has to be corrected
+where it was read, in the Audiveris editor.
+
+Bars that do not fill are reported for the same reason: the durations
+themselves are wrong, and there is no honest way to guess which note was
+misread. A tempo mark that came back as `mewum (` is beyond matching, too:
+too little of it survived to know it was `MEDIUM SWING`.
 
 ## Checking a score
 
