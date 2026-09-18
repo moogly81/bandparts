@@ -44,7 +44,7 @@ Your charts are mounted, never copied into the image, and the files written
 belong to you rather than to root.
 
 Prefer to run it directly? `nix develop` gives you the whole toolchain, or
-install `qpdf`, `poppler`, `ocrmypdf` and `exiftool` yourself. See
+install `qpdf`, `poppler`, `ocrmypdf` and `exiftool` yourself - see
 **[docs/install.md](docs/install.md)**.
 
 ## Documentation
@@ -65,19 +65,16 @@ bin/                run the tools without installing them
 manifests/          per-book overrides, kept in git
 tests/              python -m unittest discover -s tests
 docs/               the pages listed above
-data/in/         drop raw charts here        (git-ignored)
-data/out/         generated parts land here   (git-ignored)
-flake.nix, .envrc   pinned toolchain: the dev shell, the package and the
-                    published image all come from here
+data/in/            drop raw charts here       (git-ignored)
+data/out/           generated parts land here  (git-ignored)
+flake.nix, .envrc   pinned toolchain: dev shell, package and published image
 scripts/            build the image locally, including on macOS
 ```
 
 Scores are copyrighted, so the whole of `data/` is kept out of git by a single
 rule, and out of the Docker build context. Only the tooling is versioned.
-
-Those folders are defaults, not requirements: paths resolve against your
-current directory, so `bandparts --in ~/Dropbox/charts --out ~/Dropbox/parts`
-works from anywhere and nothing needs to live in the checkout.
+Those two folders are defaults, not requirements: `--in` and `--out` take any
+path, so nothing need live in the checkout.
 
 ## Known limits
 

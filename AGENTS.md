@@ -96,12 +96,10 @@ with a scanner streak through it.
   working in the checkout, not where charts are required to live.
 - The image builds one architecture when it is not being published, because
   a manifest list cannot be loaded into a local daemon.
-- Docker and Nix deliberately carry different tool versions (Debian's
-  ocrmypdf 14 against nixpkgs' 17, and so on). This is documented in the
-  README, not an oversight to tidy up. Do not "fix" it by pinning one side
-  to the other: apt and nixpkgs package different snapshots, so only
-  building the image from the flake would actually make them agree, and that
-  trade was considered and declined.
+- The image is built from `flake.nix`, so Docker and Nix carry the same tool
+  versions. Installing by hand is the only path that does not, which is why
+  `docs/install.md` asks for versions when a chart splits differently for two
+  people.
 - OCR output is not reproducible. Two runs of the same image on the same
   scan differ by a handful of words. Before blaming a change for a
   difference in OCR text, run the unchanged version twice and compare that

@@ -1,108 +1,72 @@
 # Usage
 
 ```sh
-# drop the raw charts in data/in/, then
-bin/bandparts
-
-# see the plan without writing anything
-bin/bandparts --dry-run
-
-# the same, cleaning up scans as it goes
-bin/bandparts --clean
+bin/bandparts                               # data/in -> data/out
+bin/bandparts --dry-run                     # report the plan, write nothing
+bin/bandparts --in ~/charts --out ~/parts   # anywhere; nothing need live here
 ```
 
-The book each part belongs to is not an option: it comes from the folder the
-chart sits in, *inside* the input folder. `data/in/bbcf-2026-2027/03-bones/tune.pdf`
-is tagged `bbcf-2026-2027`, sub-folders counting as sections of that book
-rather than books of their own.
+| Option | Purpose |
+| --- | --- |
+| `--in`, `--out` | folders to read and write (default `data/in`, `data/out`) |
+| `-n, --dry-run` | report only; scans are not OCR'd, so they report no parts |
+| `--clean` | deskew and despeckle scans before splitting |
+| `-l, --languages` | tesseract languages for OCR (default `eng+spa+fra`) |
+| `-r, --rename` | rewrite a voice name, repeatable (`'Bass Trombone=Trombone 4'`) |
+| `--omr` | also recognise the notes, writing a `.mxl` beside each part ([docs](musicxml.md)) |
+| `--skip-existing` | keep parts newer than their chart, to continue an interrupted run |
 
-The input folder itself names nothing. It is wherever the charts happen to
-live today - `~/Downloads/originals`, a scratch folder, a mounted disk - and a
-name like that has no business ending up in your tags. So a chart sitting
-loose in it gets no book and no `Collection` tag:
+## Which book a part belongs to
 
-```sh
-bin/bandparts --in ~/Downloads/originals --out ~/Downloads/out   # no collection
+The input tree is mirrored into the output one:
+
+```
+data/in/bbcf-2026-2027/03-bones/*.pdf -> data/out/bbcf-2026-2027/03-bones/*.pdf
 ```
 
-To get one, either put the charts in a folder named after the book, or name it
-in a manifest:
+The book is not an option: it is the first folder *inside* the input folder,
+so that part is tagged `bbcf-2026-2027`, sub-folders counting as sections of
+the book rather than books of their own. The input folder itself names nothing
+- it is wherever the charts happen to sit today - so a chart loose in it has
+no collection at all.
 
-```sh
-bin/bandparts --in ~/Dropbox/charts --out ~/Dropbox/parts   # charts/bbcf-2026-2027/*.pdf
-```
-
-The folder name is used as it is written. If you want `BBCF 2026-2027` on the
-tablet rather than `bbcf-2026-2027`, say so once in the manifest and it wins:
+The name is used as written. For `BBCF 2026-2027` on the tablet, say so once
+in the manifest, which also gives a loose pile its collection:
 
 ```yaml
 _defaults:
   collection: BBCF 2026-2027
 ```
 
-Both folders default to `data/`, and both can be pointed anywhere, so nothing
-has to live in the checkout:
+## Running it again
+
+A run rebuilds the book: every chart is read again and its parts overwritten,
+which is what keeps the manifest the only record of how the book was produced.
+
+`--skip-existing` keeps any part newer than its chart, reporting it as
+`(kept)`. That is how you continue an hour of `--omr` that stopped halfway:
 
 ```sh
-bin/bandparts --in ~/Dropbox/bbcf/charts --out ~/Dropbox/bbcf/parts
+bin/bandparts --omr --skip-existing
 ```
 
-| Option | Purpose |
-| --- | --- |
-| `-r, --rename` | rewrite a voice name, repeatable (`'Bass Trombone=Trombone 4'`) |
-| `-l, --languages` | tesseract languages for OCR (default `eng+spa+fra`) |
-| `--clean` | deskew and despeckle scans before splitting |
-| `--in`, `--out` | the folders to read and write (default `data/in`, `data/out`) |
-| `--omr` | also run optical music recognition, writing a `.mxl` beside each part ([docs](musicxml.md)) |
-| `--skip-existing` | leave parts already written and newer than their chart, to continue an interrupted run |
-| `-n, --dry-run` | report only; scans are not OCR'd, so they report no parts |
+Correct a chart and its parts are older than it again, so they are rebuilt.
+The PDF and its `.mxl` are judged separately, so a run stopped during
+recognition transcribes rather than splits everything a second time. Reading
+the chart is never skipped, OCR included: which parts it yields is only known
+once its pages have been read.
 
-Every chart in the input folder is processed on every run, and parts already
-in the output folder are overwritten. There is no "skip what is done": a run
-is a fresh build of the book, which is what makes the manifest the only record
-of how the book was produced.
-
-`--skip-existing` changes that, for the case the default handles badly: a run
-with `--omr` that was interrupted, or that failed on one chart, after an hour
-of recognition you would rather not repeat. A part is kept when its file is
-newer than the chart it came from, and it is reported as `(kept)`:
-
-```sh
-bin/bandparts --in ~/charts --out ~/parts --omr --skip-existing
-```
-
-Two details make it safe to leave on. Correct a chart, or drop a better scan
-in its place, and its parts are older than it again, so they are rebuilt
-rather than silently kept. And the PDF and its `.mxl` are judged separately,
-so a run stopped midway through recognition - parts written, scores not -
-transcribes on the next run instead of splitting everything again.
-
-What it does not skip is reading the chart itself, including OCR of a scan:
-the parts a chart yields are only known once its pages have been read.
-
-The output folder may sit inside the input one; it is skipped when looking for
-charts, so a run never reads the parts an earlier run wrote.
+The output folder may sit inside the input one - it is skipped when looking
+for charts, so a run never reads the parts an earlier run wrote.
 
 ## Adding a new book
-
-The repo is meant to accumulate books over the years, one folder per batch.
-`data/in/` is walked recursively and the structure is mirrored into
-`data/out/`:
-
-```
-data/in/bbcf-2026-2027/03-bones/*.pdf -> data/out/bbcf-2026-2027/03-bones/*.pdf
-data/in/quintet-2027/*.pdf            -> data/out/quintet-2027/*.pdf
-```
-
-So, for a new pile of charts:
 
 1. `mkdir data/in/<band>-<season>` and drop the PDFs in it.
 2. `bin/bandparts --dry-run` and read the plan. Most engraved charts need
    nothing else.
 3. For whatever came out wrong, copy `manifests/bbcf-2026-2027.yaml` to
    `manifests/<band>-<season>.yaml` - named after the folder, which is how it
-   gets found - and fix those charts there. The `_defaults` block at the top
-   carries the settings of the whole book:
+   gets found - and fix those charts there:
 
    ```yaml
    _defaults:
@@ -112,35 +76,25 @@ So, for a new pile of charts:
        Bass Trombone: Trombone 4
    ```
 
-4. `bin/bandparts` again. The same bare command reproduces the book from
-   scratch any time, which is the point of keeping the manifest in git.
+4. `bin/bandparts` again. The same bare command reproduces the book any time,
+   which is the point of keeping the manifest in git.
 
-Instruments already recognised: trombone (incl. bass), trumpet, alto/tenor/
-baritone sax, clarinet, flute, guitar, piano, bass, drums, vocal - in English,
-Spanish, French and Italian. Add to `FAMILIES` in `bandparts/voices.py` for
-anything else.
+Instruments recognised: trombone (incl. bass), trumpet, alto/tenor/baritone
+sax, clarinet, flute, guitar, piano, bass, drums, vocal - in English, Spanish,
+French and Italian. Add to `FAMILIES` in `bandparts/voices.py` for anything
+else.
 
 ## Manifests
 
 Detection covers most engraved charts. Hand-written headers and creative
 filenames need help, and that is what a manifest is for.
 
-There is no flag for it: a manifest is found by the name of the book, so
+There is no flag for it. A manifest is found by the name of the book, so
 charts in `bbcf-2026-2027/` use `manifests/bbcf-2026-2027.yaml`, and the run
-says which file it read. A book that travels as a single folder can instead
-carry a `bandparts.yaml` beside its charts; if both exist, `manifests/` wins.
-A book with no manifest is processed on detection alone.
-
-Charts loose in the input folder have no book name to look up, so for them
-only `bandparts.yaml` beside the charts applies - which is also how you give
-that pile a collection:
-
-```sh
-printf '_defaults:\n  collection: BBCF 2026-2027\n' > ~/Downloads/originals/bandparts.yaml
-```
-
-See
-[`manifests/bbcf-2026-2027.yaml`](../manifests/bbcf-2026-2027.yaml):
+says which file it read. A book that travels as one folder can instead carry a
+`bandparts.yaml` beside its charts; if both exist, `manifests/` wins. Charts
+loose in the input folder have no name to look up, so only the second applies
+to them. A book with no manifest is processed on detection alone.
 
 ```yaml
 "Quizas Quizas Quizas-78 pgs-1 (arrastrado).pdf":
@@ -153,4 +107,5 @@ See
 ```
 
 Every field is optional: an entry may fix the credits only and still let the
-page ranges be found automatically.
+page ranges be found automatically. See
+[`manifests/bbcf-2026-2027.yaml`](../manifests/bbcf-2026-2027.yaml).

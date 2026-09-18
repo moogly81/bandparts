@@ -5,12 +5,19 @@ printed notes back into notation is a different job, done by a different
 program ([Audiveris](https://github.com/Audiveris/audiveris)), and the result
 always needs repair. It is therefore optional.
 
-## First: give Audiveris legacy OCR data
+## First: install Audiveris, and give it legacy OCR data
 
-The macOS build ships none, so it reads no text at all - no title, no part
-name, no rehearsal marks - while otherwise appearing to work. Pointing it at
-Homebrew's tesseract is not enough either: Audiveris uses Tesseract's *legacy*
-engine, and Homebrew ships LSTM-only models. Fetch the full ones:
+```sh
+curl -LO https://github.com/Audiveris/audiveris/releases/download/5.11.0/Audiveris-5.11.0-macosx-arm64.dmg
+hdiutil attach Audiveris-5.11.0-macosx-arm64.dmg
+cp -R /Volumes/Audiveris/Audiveris.app /Applications/   # where bandparts looks
+hdiutil detach /Volumes/Audiveris
+```
+
+The macOS build ships no OCR data, so it reads no text at all - no title, no
+part name, no rehearsal marks - while otherwise appearing to work. Pointing it
+at Homebrew's tesseract is not enough either: Audiveris uses Tesseract's
+*legacy* engine, and Homebrew ships LSTM-only models. Fetch the full ones:
 
 ```sh
 mkdir -p ~/.local/share/tessdata-legacy && cd ~/.local/share/tessdata-legacy
@@ -19,9 +26,8 @@ for l in eng fra spa ita; do
 done
 ```
 
-`bandparts` looks there by default. If Audiveris itself is not on your `PATH`,
-point at it: on macOS,
-`export AUDIVERIS=/Applications/Audiveris.app/Contents/MacOS/Audiveris`.
+`bandparts` looks in both places by default. Elsewhere, or for another
+install, set `AUDIVERIS` to the executable.
 
 ## Recognising parts as they are split
 
@@ -37,9 +43,11 @@ the number of bars needing repair reported:
         5-10-15 Hours - Trombone 1.mxl, 7 bar(s) need repair
 ```
 
-A failure never stops the run: the PDF is what gets read from a stand, and it
-has already been written. The `.omr` file left beside the score is the
-Audiveris project, which you reopen in its editor to correct the recognition.
+Recognition costs about a minute per part, so `--skip-existing` is worth
+having on a book of any size ([usage](usage.md)). A failure never stops the
+run: the PDF is what gets read from a stand, and it is already written. The
+`.omr` beside the score is the Audiveris project, which you reopen in its
+editor to correct the recognition.
 
 Or do it by hand, one part at a time:
 

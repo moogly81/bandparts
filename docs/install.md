@@ -1,30 +1,18 @@
 # Install
 
-Three ways, in order of least trouble: Docker if you just want to run it, Nix
-if you want a pinned toolchain, or install the tools by hand.
+Three ways: Docker to just run it, Nix for a pinned toolchain, or the tools by
+hand.
 
 ## With Docker
 
-The image carries every tool already, so it behaves the same on macOS, Linux
-and Windows. Charts are mounted at run time, never copied into the image.
+The image carries every tool, so it behaves the same on macOS, Linux and
+Windows. Charts are mounted at run time, never copied into the image.
 
 ```sh
 docker run --rm -v "$PWD/data:/work/data" moogly81/bandparts
 ```
 
-The same image is published to GitHub's registry, if you prefer it or are
-rate-limited by Docker Hub:
-
-```sh
-docker run --rm -v "$PWD/data:/work/data" ghcr.io/moogly81/bandparts
-```
-
-Tags are releases: `latest` follows the newest `v*` tag rather than every
-commit to main, so pulling twice in a week gets you the same image unless
-something was actually released.
-
-Manifests are found under `manifests/`, so mount that too and they are picked
-up by name, with nothing to pass:
+Mount `manifests/` too and they are found by name, with nothing to pass:
 
 ```sh
 docker run --rm \
@@ -33,78 +21,70 @@ docker run --rm \
   moogly81/bandparts
 ```
 
-The container runs as an ordinary user, so the parts it writes belong to you.
-If your host account is not uid 1000, add `--user "$(id -u):$(id -g)"`.
+The same image is on GitHub's registry if Docker Hub rate-limits you:
+`ghcr.io/moogly81/bandparts`. Tags are releases, so `latest` follows the newest
+`v*` tag rather than every commit to main.
 
-To run one of the MusicXML tools instead of the splitter, override the entry
-point:
+The container runs as an ordinary user, so the parts belong to you; if your
+account is not uid 1000, add `--user "$(id -u):$(id -g)"`. To run a MusicXML
+tool instead of the splitter, override the entry point:
 
 ```sh
 docker run --rm -v "$PWD:/work" --entrypoint musicxml-check \
   moogly81/bandparts score.mxl
 ```
 
-### You do not need Docker Desktop
+### Without Docker Desktop
 
-Any OCI runtime works, and the command above is unchanged under the two
-common free replacements on macOS.
-
-**Colima** keeps the `docker` CLI, so nothing else in this page changes:
+Any OCI runtime works. **Colima** keeps the `docker` CLI, so nothing on this
+page changes:
 
 ```sh
-brew install colima docker
-colima start --cpu 4 --memory 8
+brew install colima docker && colima start --cpu 4 --memory 8
 ```
 
-**Podman** is daemonless and rootless; substitute `podman` for `docker`:
+**Podman** is daemonless; substitute `podman` for `docker` and add
+`--userns keep-id`, or files come back owned by a subuid:
 
 ```sh
-brew install podman
-podman machine init && podman machine start
-podman run --rm -v "$PWD/data:/work/data" docker.io/moogly81/bandparts
+brew install podman && podman machine init && podman machine start
 ```
 
-One wrinkle worth knowing: rootless Podman maps your user to root inside the
-container, so files come back owned by a high-numbered subuid unless you add
-`--userns keep-id`. Colima does not have this problem.
-
-OrbStack is faster than either and pleasant to use, but it is paid software
-for commercial use. Docker Desktop is likewise free only for personal use and
-small companies.
+OrbStack is faster than either, but paid for commercial use - as is Docker
+Desktop beyond personal use and small companies.
 
 ## With Nix
 
-Nix builds an isolated toolchain per project, so `qpdf`, `ocrmypdf`,
-`tesseract` and friends are pinned here and never touch the rest of your
-machine. Fine if you have never used it:
+Nix pins `qpdf`, `ocrmypdf`, `tesseract` and friends to this project without
+touching the rest of your machine.
 
 ```sh
-# 1. install Nix (multi-user, macOS or Linux) - once per machine
+# once per machine
 sh <(curl -L https://nixos.org/nix/install) --daemon
-
-# 2. enable flakes, the format this repo uses - once per machine
 mkdir -p ~/.config/nix
 echo 'experimental-features = nix-command flakes' >> ~/.config/nix/nix.conf
+exec $SHELL
 
-# 3. enter the project shell (first run downloads the tools, a few minutes)
-cd bandparts
-nix develop
+# then
+git clone https://github.com/moogly81/bandparts.git && cd bandparts
+nix develop          # first run downloads the tools, a few minutes
 ```
 
-Inside that shell every dependency is on `PATH`. Type `exit` to leave, and
-your machine is exactly as before: nothing was installed globally.
+Inside that shell every dependency is on `PATH`, and `bin/bandparts` runs.
+Type `exit` and your machine is exactly as before. To run a single command
+without entering it: `nix develop --command bin/bandparts --dry-run`.
 
-To enter it **automatically** when you `cd` into the repo, use
-[direnv](https://direnv.net) with the `.envrc` already here:
+To enter the shell automatically on `cd`, use [direnv](https://direnv.net)
+with the `.envrc` already here:
 
 ```sh
-brew install direnv                                    # or: nix profile install nixpkgs#direnv
+brew install direnv
 echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc && exec zsh
 direnv allow                                           # once, in the repo
 ```
 
-`.envrc` falls back to whatever is on your `PATH` when Nix is absent, so it is
-safe either way.
+That also puts `bin/` on your `PATH` inside the repo, so the command is plain
+`bandparts`. `.envrc` falls back to whatever is on `PATH` when Nix is absent.
 
 ## By hand
 
@@ -115,38 +95,33 @@ pip install pyyaml          # only needed for manifests
 
 ## Which tools you end up with
 
-Docker and Nix give you the same ones. The image is built from this
-repository's `flake.nix`, from the same definition as the dev shell, so the
-version of `ocrmypdf` inside the container is the version a contributor tests
-with. There is nothing to keep in step by hand, and no base-image distribution
-with opinions of its own.
+Docker and Nix give the same ones: the image is built from this repository's
+`flake.nix`, from the same definition as the dev shell, so the `ocrmypdf` in
+the container is the one contributors test with.
 
-Installing by hand is the exception: Homebrew, apt and the rest ship whatever
-they ship. That matters more than it sounds, because `ocrmypdf` and
-`tesseract` decide how well a photocopy is read - the same scan can produce
-different text, and therefore a different voice guess, on different versions.
-If a chart splits correctly for you and not for someone else, compare versions
-before assuming a bug:
+Installing by hand is the exception, and it matters more than it sounds:
+`ocrmypdf` and `tesseract` decide how well a photocopy is read, so the same
+scan can yield different text, and a different voice guess, on different
+versions. If a chart splits correctly for you and not for someone else,
+compare versions before assuming a bug:
 
 ```sh
 ocrmypdf --version && tesseract --version | head -1
 ```
 
-Worth knowing whichever path you took: **OCR is not reproducible**. The same
-scan, the same tools, run twice, gives slightly different text. Expect small
-differences between runs, and be suspicious only of large ones.
+Whichever path you took: **OCR is not reproducible**. The same scan run twice
+gives slightly different text. Expect small differences; be suspicious only of
+large ones.
 
 ## Building the image yourself
 
-On Linux:
-
 ```sh
-nix build .#dockerImage   # produces a script that streams the image
+nix build .#dockerImage   # Linux: produces a script that streams the image
 ./result | docker load
 ```
 
-On macOS that output does not exist, because the image is a Linux artefact.
-Rather than pushing to CI to find out whether a change works, build it in a
+On macOS that output does not exist, the image being a Linux artefact. Rather
+than pushing to CI to find out whether a change works, build it in a
 container:
 
 ```sh
@@ -155,5 +130,4 @@ scripts/build-image --run    # ... and then split whatever is in data/in
 ```
 
 The script hands Nix only the files git tracks, so your charts are never
-copied into the build, and keeps its Nix store in a named volume so repeat
-builds are quick.
+copied into the build, and keeps its Nix store in a named volume.

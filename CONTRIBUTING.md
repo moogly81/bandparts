@@ -21,9 +21,9 @@ minutes for an answer you can have in thirty seconds is a poor trade.
 
 ## The one hard rule
 
-Never commit sheet music. `inbox/` and `parts/` are git-ignored because they
-hold copyrighted scores, and tests build their own PDFs rather than shipping
-a real one. Check `git status` before you commit.
+Never commit sheet music. The whole of `data/` is git-ignored because it holds
+copyrighted scores, and tests build their own PDFs rather than shipping a real
+one. Check `git status` before you commit.
 
 ## What makes a good patch
 
