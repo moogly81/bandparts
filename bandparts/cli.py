@@ -28,8 +28,24 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--omr", action="store_true",
                         help="also run optical music recognition, writing a .mxl beside each "
                              "part (needs Audiveris; the notes will need repair, see the docs)")
+    parser.add_argument("--skip-existing", action="store_true",
+                        help="leave alone any part already written and newer than its chart, "
+                             "so an interrupted run can be continued")
     parser.add_argument("-n", "--dry-run", action="store_true", help="report what would be produced, write nothing")
     return parser.parse_args(argv)
+
+
+def is_current(output: str, chart: str) -> bool:
+    """True when 'output' exists and is no older than the chart it came from.
+
+    Modification time rather than mere existence, so that editing a chart, or
+    dropping a corrected scan in its place, produces the part again instead of
+    being silently ignored.
+    """
+    try:
+        return os.path.getmtime(output) >= os.path.getmtime(chart)
+    except OSError:  # not written yet, or vanished between the two calls
+        return False
 
 
 def plan(source: str, entry: manifests.Entry, languages: str, clean: bool, workdir: str, dry_run: bool):
@@ -142,6 +158,7 @@ def run(options: argparse.Namespace) -> int:
 
     command_line_renames = dict(pair.split("=", 1) for pair in options.rename)
     written = 0
+    kept = 0
 
     with tempfile.TemporaryDirectory(prefix="bandparts-") as workdir:
         for chart in charts:
@@ -170,21 +187,37 @@ def run(options: argparse.Namespace) -> int:
             for voice, first, last in blocks:
                 voice = renames.get(voice, voice)
                 destination = os.path.join(destination_folder, f"{title} - {voice}.pdf")
+                score = os.path.splitext(destination)[0] + ".mxl"
+
+                # the part and its score are skipped separately: a run stopped
+                # during recognition has whole parts written but no score, and
+                # continuing it should transcribe rather than split again
+                keep_part = options.skip_existing and is_current(destination, source)
+                keep_score = options.omr and options.skip_existing and is_current(score, source)
+                if keep_part and (keep_score or not options.omr):
+                    kept += 1
+                    print(f"    p{first}-{last} -> {os.path.basename(destination)} (kept)")
+                    continue
+
                 print(f"    p{first}-{last} -> {os.path.basename(destination)}")
                 written += 1
                 if options.dry_run:
                     continue
-                pdftools.extract_pages(readable, first, last, destination)
-                pdftools.tag(destination, tagging.fields(title, voice, entry.composer, entry.arranger, collection))
+                if not keep_part:
+                    pdftools.extract_pages(readable, first, last, destination)
+                    pdftools.tag(destination, tagging.fields(title, voice, entry.composer, entry.arranger, collection))
 
-                if options.omr:
+                if options.omr and not keep_score:
                     try:
                         print(f"        {transcribe(destination, title, voice, entry.composer, entry.arranger)}")
                     except (omr.RecognitionError, subprocess.TimeoutExpired) as error:
                         print(f"        ! {error}", file=sys.stderr)
 
     verb = "would write" if options.dry_run else "wrote"
-    print(f"\n{len(charts)} chart(s) read, {verb} {written} part(s) in {options.destination}/")
+    summary = f"{len(charts)} chart(s) read, {verb} {written} part(s)"
+    if kept:
+        summary += f", kept {kept}"
+    print(f"\n{summary} in {options.destination}/")
     return 0
 
 

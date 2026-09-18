@@ -54,14 +54,31 @@ bin/bandparts --in ~/Dropbox/bbcf/charts --out ~/Dropbox/bbcf/parts
 | `--clean` | deskew and despeckle scans before splitting |
 | `--in`, `--out` | the folders to read and write (default `data/in`, `data/out`) |
 | `--omr` | also run optical music recognition, writing a `.mxl` beside each part ([docs](musicxml.md)) |
+| `--skip-existing` | leave parts already written and newer than their chart, to continue an interrupted run |
 | `-n, --dry-run` | report only; scans are not OCR'd, so they report no parts |
 
 Every chart in the input folder is processed on every run, and parts already
 in the output folder are overwritten. There is no "skip what is done": a run
 is a fresh build of the book, which is what makes the manifest the only record
-of how the book was produced. It also means a second run with `--omr` costs
-the same hour as the first, so work on a handful of charts while tuning a
-manifest and run the whole book once at the end.
+of how the book was produced.
+
+`--skip-existing` changes that, for the case the default handles badly: a run
+with `--omr` that was interrupted, or that failed on one chart, after an hour
+of recognition you would rather not repeat. A part is kept when its file is
+newer than the chart it came from, and it is reported as `(kept)`:
+
+```sh
+bin/bandparts --in ~/charts --out ~/parts --omr --skip-existing
+```
+
+Two details make it safe to leave on. Correct a chart, or drop a better scan
+in its place, and its parts are older than it again, so they are rebuilt
+rather than silently kept. And the PDF and its `.mxl` are judged separately,
+so a run stopped midway through recognition - parts written, scores not -
+transcribes on the next run instead of splitting everything again.
+
+What it does not skip is reading the chart itself, including OCR of a scan:
+the parts a chart yields are only known once its pages have been read.
 
 The output folder may sit inside the input one; it is skipped when looking for
 charts, so a run never reads the parts an earlier run wrote.
